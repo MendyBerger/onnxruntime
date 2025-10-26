@@ -63,13 +63,14 @@ cmake "$SCRIPT_DIR/cmake" \
     -Donnxruntime_USE_WEBGPU=OFF \
     -Donnxruntime_USE_WEBNN=OFF \
     -Donnxruntime_BUILD_UNIT_TESTS=OFF \
-    -Donnxruntime_MINIMAL_BUILD=OFF \
+    -Donnxruntime_BUILD_BENCHMARKS=OFF \
+    -Donnxruntime_MINIMAL_BUILD=ON \
+    -Donnxruntime_DISABLE_EXCEPTIONS=ON \
+    -Donnxruntime_DISABLE_RTTI=ON \
+    -DONNX_DISABLE_EXCEPTIONS=ON \
     -Donnxruntime_EXTENDED_MINIMAL_BUILD=OFF \
     -Donnxruntime_DISABLE_CONTRIB_OPS=OFF \
     -Donnxruntime_DISABLE_ML_OPS=OFF \
-    -Donnxruntime_DISABLE_RTTI=OFF \
-    -Donnxruntime_DISABLE_EXCEPTIONS=OFF \
-    -Donnxruntime_BUILD_BENCHMARKS=OFF \
     -DCMAKE_VERBOSE_MAKEFILE=ON \
     "$@"
 

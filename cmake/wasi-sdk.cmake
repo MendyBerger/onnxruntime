@@ -22,13 +22,14 @@ set(CMAKE_SYSTEM_NAME WASI)
 set(CMAKE_SYSTEM_VERSION 1)
 set(CMAKE_SYSTEM_PROCESSOR wasm32)
 
-# Set the compilers
-set(CMAKE_C_COMPILER "${WASI_SDK_PATH}/bin/clang")
-set(CMAKE_CXX_COMPILER "${WASI_SDK_PATH}/bin/clang++")
+# Set the compilers - using WASI Preview 2 (wasip2)
+# Must disable exceptions for component model compatibility
+set(CMAKE_C_COMPILER "${WASI_SDK_PATH}/bin/wasm32-wasip2-clang")
+set(CMAKE_CXX_COMPILER "${WASI_SDK_PATH}/bin/wasm32-wasip2-clang++")
 set(CMAKE_AR "${WASI_SDK_PATH}/bin/llvm-ar")
 set(CMAKE_RANLIB "${WASI_SDK_PATH}/bin/llvm-ranlib")
-set(CMAKE_C_COMPILER_TARGET wasm32-wasi)
-set(CMAKE_CXX_COMPILER_TARGET wasm32-wasi)
+set(CMAKE_C_COMPILER_TARGET wasm32-wasip2)
+set(CMAKE_CXX_COMPILER_TARGET wasm32-wasip2)
 
 # Set the sysroot
 set(CMAKE_SYSROOT "${WASI_SDK_PATH}/share/wasi-sysroot")
@@ -51,7 +52,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Enable signal emulation for signal handling support
 # Enable mmap emulation for memory mapping support
 # Enable getpid emulation for process ID support
-set(WASI_FLAGS "-D__wasi__ -mthread-model single -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_GETPID")
+# Disable exceptions and RTTI for WASI Preview 2 component model compatibility
+# Disable unwind tables to remove exception handling overhead
+set(WASI_FLAGS "-D__wasi__ -mthread-model single -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_GETPID -fno-exceptions -fno-rtti -fno-unwind-tables -fno-asynchronous-unwind-tables")
 
 set(CMAKE_C_FLAGS_INIT "${WASI_FLAGS}")
 set(CMAKE_CXX_FLAGS_INIT "${WASI_FLAGS}")
@@ -74,11 +77,21 @@ set(CMAKE_CXX_COMPILER_WORKS 1 CACHE INTERNAL "")
 # Don't build shared libraries with WASI
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
 
-message(STATUS "WASI-SDK toolchain loaded")
+# Add compile definitions for disabled exceptions
+# These are also set by onnxruntime_DISABLE_EXCEPTIONS but we set them here
+# early to ensure all dependencies get them
+add_compile_definitions(ORT_NO_EXCEPTIONS)
+add_compile_definitions(ONNX_NO_EXCEPTIONS)
+add_compile_definitions(MLAS_NO_EXCEPTION)
+add_compile_definitions(JSON_NOEXCEPTION)
+
+message(STATUS "WASI-SDK toolchain loaded (Preview 2)")
 message(STATUS "  C Compiler: ${CMAKE_C_COMPILER}")
 message(STATUS "  C++ Compiler: ${CMAKE_CXX_COMPILER}")
+message(STATUS "  Target: wasm32-wasip2")
 message(STATUS "  Sysroot: ${CMAKE_SYSROOT}")
 message(STATUS "  Thread Model: single (pthread stubs)")
+message(STATUS "  Exceptions: DISABLED (component model requirement)")
 message(STATUS "  Signal Support: emulated")
 message(STATUS "  Mmap Support: emulated")
 message(STATUS "  Process ID: emulated")

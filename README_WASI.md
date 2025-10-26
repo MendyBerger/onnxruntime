@@ -320,6 +320,26 @@ The following features are specific to Emscripten and browser environments:
 - **Asyncify/JSPI** - Emscripten-specific async handling
 - **Iconv** - Character encoding conversion (WASI libc doesn't include it, not needed for inference)
 - **XNNPACK** - CPU optimization library (doesn't recognize WASI as a platform yet)
+- **C++ Exceptions** - WASI Preview 2 component model doesn't support exception handling imports
+- **Dynamic Library Loading** - WASI doesn't support `dlopen`/`dlsym` (no plugin system)
+
+### Exception Handling in WASI Preview 2
+
+WASI Preview 2 uses the WebAssembly Component Model, which has stricter requirements and does not support importing exception-related functions like `__cxa_allocate_exception`. Therefore:
+
+- The build system automatically enables `-Donnxruntime_DISABLE_EXCEPTIONS=ON`
+- ONNXRuntime switches to return-code based error handling (via `ORT_NO_EXCEPTIONS`)
+- All dependencies (ONNX, Protobuf, MLAS, etc.) are built without exception support
+- This is handled transparently - you don't need to configure anything manually
+
+### Dynamic Library Loading in WASI
+
+WASI doesn't support dynamic library loading functions (`dlopen`, `dlsym`, `dlclose`, `dlerror`). Therefore:
+
+- All custom operators must be statically linked at compile time
+- Plugin-based execution providers are not available
+- The minimal build configuration is used to avoid plugin dependencies
+- Dynamic library functions return `NOT_IMPLEMENTED` status
 
 These features will be automatically disabled when building with WASI-SDK. Basic SIMD optimizations remain available.
 

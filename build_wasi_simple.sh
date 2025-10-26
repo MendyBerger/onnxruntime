@@ -29,6 +29,7 @@ cd "$BUILD_DIR"
 # Configure with CMake using toolchain file
 # Note: ONNXRuntime's CMakeLists.txt is in the cmake/ subdirectory
 # Using WASI-SDK 2.7+ with -mthread-model single for pthread stubs
+# WASI Preview 2 requires exceptions to be disabled
 cmake "$SCRIPT_DIR/cmake" \
     -DCMAKE_TOOLCHAIN_FILE="$SCRIPT_DIR/cmake/wasi-sdk.cmake" \
     -DCMAKE_BUILD_TYPE=Release \
@@ -38,6 +39,10 @@ cmake "$SCRIPT_DIR/cmake" \
     -Donnxruntime_USE_XNNPACK=OFF \
     -Donnxruntime_BUILD_UNIT_TESTS=OFF \
     -Donnxruntime_BUILD_BENCHMARKS=OFF \
+    -Donnxruntime_MINIMAL_BUILD=ON \
+    -Donnxruntime_DISABLE_EXCEPTIONS=ON \
+    -Donnxruntime_DISABLE_RTTI=ON \
+    -DONNX_DISABLE_EXCEPTIONS=ON \
     "$@"
 
 # Build

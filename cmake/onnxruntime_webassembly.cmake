@@ -182,11 +182,11 @@ else()
     ${onnxruntime_webassembly_src}
   )
 
-  # WASI supports exceptions, enable them
+  # WASI Preview 2 component model requires exceptions to be disabled
+  # The component model doesn't support exception imports like __cxa_allocate_exception
   if (onnxruntime_ENABLE_WEBASSEMBLY_API_EXCEPTION_CATCHING)
-    message(STATUS "Exception catching enabled for WASI build")
-    # WASI-SDK doesn't need special flags for exception catching
-    # Exceptions are supported by default with proper unwinding
+    message(WARNING "Exception catching cannot be enabled for WASI Preview 2 - component model restriction")
+    message(WARNING "Build will continue with exceptions disabled (-fno-exceptions)")
   endif()
 
   target_link_libraries(onnxruntime_webassembly PRIVATE

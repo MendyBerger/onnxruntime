@@ -530,6 +530,14 @@ class PosixEnv : public Env {
   }
 
   common::Status LoadDynamicLibrary(const PathString& library_filename, bool global_symbols, void** handle) const override {
+#ifdef __wasi__
+    // WASI doesn't support dynamic library loading
+    ORT_UNUSED_PARAMETER(library_filename);
+    ORT_UNUSED_PARAMETER(global_symbols);
+    *handle = nullptr;
+    return common::Status(common::ONNXRUNTIME, common::NOT_IMPLEMENTED,
+                          "Dynamic library loading is not supported in WASI");
+#else
     dlerror();  // clear any old error_str
     *handle = dlopen(library_filename.c_str(), RTLD_NOW | (global_symbols ? RTLD_GLOBAL : RTLD_LOCAL));
     char* error_str = dlerror();
@@ -538,9 +546,16 @@ class PosixEnv : public Env {
                             "Failed to load library " + library_filename + " with error: " + error_str);
     }
     return common::Status::OK();
+#endif
   }
 
   common::Status UnloadDynamicLibrary(void* handle) const override {
+#ifdef __wasi__
+    // WASI doesn't support dynamic library loading
+    ORT_UNUSED_PARAMETER(handle);
+    return common::Status(common::ONNXRUNTIME, common::NOT_IMPLEMENTED,
+                          "Dynamic library loading is not supported in WASI");
+#else
     if (!handle) {
       return common::Status(common::ONNXRUNTIME, common::FAIL, "Got null library handle");
     }
@@ -552,9 +567,18 @@ class PosixEnv : public Env {
                             "Failed to unload library with error: " + std::string(error_str));
     }
     return common::Status::OK();
+#endif
   }
 
   common::Status GetSymbolFromLibrary(void* handle, const std::string& symbol_name, void** symbol) const override {
+#ifdef __wasi__
+    // WASI doesn't support dynamic library loading
+    ORT_UNUSED_PARAMETER(handle);
+    ORT_UNUSED_PARAMETER(symbol_name);
+    *symbol = nullptr;
+    return common::Status(common::ONNXRUNTIME, common::NOT_IMPLEMENTED,
+                          "Dynamic library loading is not supported in WASI");
+#else
     dlerror();  // clear any old error str
 
     // search global space if handle is nullptr.
@@ -569,6 +593,7 @@ class PosixEnv : public Env {
     }
     // it's possible to get a NULL symbol in our case when Schemas are not custom.
     return common::Status::OK();
+#endif
   }
 
   std::string FormatLibraryFileName(const std::string& name, const std::string& version) const override {
