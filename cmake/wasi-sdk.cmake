@@ -1,0 +1,75 @@
+# CMake toolchain file for WASI-SDK
+# Usage: cmake -DCMAKE_TOOLCHAIN_FILE=cmake/wasi-sdk.cmake ...
+
+# Check if WASI_SDK_PATH is set
+if(NOT DEFINED ENV{WASI_SDK_PATH})
+    message(FATAL_ERROR "WASI_SDK_PATH environment variable is not set. "
+                        "Please download WASI-SDK from https://github.com/WebAssembly/wasi-sdk/releases "
+                        "and set WASI_SDK_PATH to the installation directory.")
+endif()
+
+set(WASI_SDK_PATH $ENV{WASI_SDK_PATH})
+
+# Verify WASI-SDK exists
+if(NOT EXISTS "${WASI_SDK_PATH}/bin/clang")
+    message(FATAL_ERROR "WASI-SDK not found at ${WASI_SDK_PATH}")
+endif()
+
+message(STATUS "Using WASI-SDK at: ${WASI_SDK_PATH}")
+
+# Set the target system
+set(CMAKE_SYSTEM_NAME WASI)
+set(CMAKE_SYSTEM_VERSION 1)
+set(CMAKE_SYSTEM_PROCESSOR wasm32)
+
+# Set the compilers
+set(CMAKE_C_COMPILER "${WASI_SDK_PATH}/bin/clang")
+set(CMAKE_CXX_COMPILER "${WASI_SDK_PATH}/bin/clang++")
+set(CMAKE_AR "${WASI_SDK_PATH}/bin/llvm-ar")
+set(CMAKE_RANLIB "${WASI_SDK_PATH}/bin/llvm-ranlib")
+set(CMAKE_C_COMPILER_TARGET wasm32-wasi)
+set(CMAKE_CXX_COMPILER_TARGET wasm32-wasi)
+
+# Set the sysroot
+set(CMAKE_SYSROOT "${WASI_SDK_PATH}/share/wasi-sysroot")
+
+# Set the find root path
+set(CMAKE_FIND_ROOT_PATH "${WASI_SDK_PATH}/share/wasi-sysroot")
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+# Set C/C++ standards
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Compiler flags for WASI
+# Use single-threaded model which provides pthread stubs (WASI-SDK 2.7+)
+set(WASI_FLAGS "-D__wasi__ -mthread-model single")
+
+set(CMAKE_C_FLAGS_INIT "${WASI_FLAGS}")
+set(CMAKE_CXX_FLAGS_INIT "${WASI_FLAGS}")
+
+# Also set the regular flags to ensure they're applied to all targets including dependencies
+set(CMAKE_C_FLAGS "${WASI_FLAGS}" CACHE STRING "C flags" FORCE)
+set(CMAKE_CXX_FLAGS "${WASI_FLAGS}" CACHE STRING "CXX flags" FORCE)
+
+# Linker flags for WASI
+# Note: -mthread-model single also affects linking
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,--allow-undefined -Wl,--export-all -mthread-model single")
+
+# Cache the compiler checks
+set(CMAKE_C_COMPILER_WORKS 1 CACHE INTERNAL "")
+set(CMAKE_CXX_COMPILER_WORKS 1 CACHE INTERNAL "")
+
+# Don't build shared libraries with WASI
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
+
+message(STATUS "WASI-SDK toolchain loaded")
+message(STATUS "  C Compiler: ${CMAKE_C_COMPILER}")
+message(STATUS "  C++ Compiler: ${CMAKE_CXX_COMPILER}")
+message(STATUS "  Sysroot: ${CMAKE_SYSROOT}")
+message(STATUS "  Thread Model: single (pthread stubs)")

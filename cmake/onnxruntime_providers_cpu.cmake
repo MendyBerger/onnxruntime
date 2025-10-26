@@ -243,6 +243,11 @@ if (NOT onnxruntime_MINIMAL_BUILD AND NOT onnxruntime_EXTENDED_MINIMAL_BUILD
                           "LINKER:--version-script=${ONNXRUNTIME_ROOT}/core/providers/shared/version_script.lds"
                           "LINKER:--gc-sections")
     endif()
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "WASI")
+    # WASI: Use Unix-style version script for symbol exports
+    target_link_options(onnxruntime_providers_shared PRIVATE
+                        "LINKER:--version-script=${ONNXRUNTIME_ROOT}/core/providers/shared/version_script.lds"
+                        "LINKER:--gc-sections")
   elseif(WIN32)
   set_property(TARGET onnxruntime_providers_shared APPEND_STRING PROPERTY LINK_FLAGS "-DEF:${ONNXRUNTIME_ROOT}/core/providers/shared/symbols.def")
   set(ONNXRUNTIME_PROVIDERS_SHARED onnxruntime_providers_shared)

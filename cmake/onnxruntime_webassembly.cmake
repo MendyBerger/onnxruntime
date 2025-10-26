@@ -1,6 +1,9 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
+# WASI-SDK Configuration
+message(STATUS "Configuring ONNXRuntime for WASI-SDK")
+
 function(bundle_static_library bundled_target_name)
   function(recursively_collect_dependencies input_target)
     set(input_link_libraries LINK_LIBRARIES)
@@ -84,25 +87,34 @@ function(bundle_static_library bundled_target_name)
   add_dependencies(${bundled_target_name} bundling_target)
 endfunction()
 
-if (onnxruntime_USE_JSEP AND onnxruntime_USE_WEBGPU)
-  message(FATAL_ERROR "onnxruntime_USE_JSEP and onnxruntime_USE_WEBGPU cannot be enabled at the same time.")
+# WASI doesn't support JSEP or WebGPU directly
+if (onnxruntime_USE_JSEP)
+  message(WARNING "JSEP is not supported with WASI-SDK, disabling.")
+  set(onnxruntime_USE_JSEP OFF)
 endif()
 
-if (NOT onnxruntime_ENABLE_WEBASSEMBLY_THREADS)
-  add_compile_definitions(
-    BUILD_MLAS_NO_ONNXRUNTIME
-  )
-
-  # Override re2 compiler options to remove -pthread
-  set_property(TARGET re2 PROPERTY COMPILE_OPTIONS )
+if (onnxruntime_USE_WEBGPU)
+  message(WARNING "WebGPU is not supported with WASI-SDK, disabling.")
+  set(onnxruntime_USE_WEBGPU OFF)
 endif()
+
+# WASI doesn't support threads in the traditional sense
+if (onnxruntime_ENABLE_WEBASSEMBLY_THREADS)
+  message(WARNING "Traditional threading is not supported with WASI-SDK, disabling.")
+  set(onnxruntime_ENABLE_WEBASSEMBLY_THREADS OFF)
+endif()
+
+add_compile_definitions(
+  BUILD_MLAS_NO_ONNXRUNTIME
+  __wasi__
+)
+
+# Override re2 compiler options to remove -pthread (not supported in WASI)
+set_property(TARGET re2 PROPERTY COMPILE_OPTIONS )
 
 if (NOT onnxruntime_USE_VCPKG)
   target_compile_options(onnx PRIVATE -Wno-unused-parameter -Wno-unused-variable)
 endif()
-
-# Include the Node.js helper for finding and validating Node.js and NPM
-include(node_helper.cmake)
 
 if (onnxruntime_BUILD_WEBASSEMBLY_STATIC_LIB)
     bundle_static_library(onnxruntime_webassembly
@@ -142,8 +154,10 @@ if (onnxruntime_BUILD_WEBASSEMBLY_STATIC_LIB)
         ${onnxruntime_webassembly_test_src}
       )
 
-      set_target_properties(onnxruntime_webassembly_test PROPERTIES LINK_FLAGS
-        "-s ALLOW_MEMORY_GROWTH=1 -s \"EXPORTED_RUNTIME_METHODS=['FS']\" --preload-file ${CMAKE_CURRENT_BINARY_DIR}/testdata@/testdata -s EXIT_RUNTIME=1"
+      # WASI-specific link options
+      target_link_options(onnxruntime_webassembly_test PRIVATE
+        -Wl,--allow-undefined
+        -Wl,--export-all
       )
 
       target_link_libraries(onnxruntime_webassembly_test PUBLIC
@@ -151,8 +165,9 @@ if (onnxruntime_BUILD_WEBASSEMBLY_STATIC_LIB)
         GTest::gtest
       )
 
+      # Note: Tests need a WASI runtime like wasmtime or wasmer to run
       add_test(NAME onnxruntime_webassembly_test
-        COMMAND ${NODE_EXECUTABLE} onnxruntime_webassembly_test.js
+        COMMAND wasmtime run --dir=. $<TARGET_FILE:onnxruntime_webassembly_test>
         WORKING_DIRECTORY $<TARGET_FILE_DIR:onnxruntime_webassembly_test>
       )
     endif()
@@ -167,15 +182,11 @@ else()
     ${onnxruntime_webassembly_src}
   )
 
+  # WASI supports exceptions, enable them
   if (onnxruntime_ENABLE_WEBASSEMBLY_API_EXCEPTION_CATCHING)
-    # we catch exceptions at the api level
-    file(GLOB_RECURSE onnxruntime_webassembly_src_exc CONFIGURE_DEPENDS
-      "${ONNXRUNTIME_ROOT}/wasm/api.cc"
-      "${ONNXRUNTIME_ROOT}/core/session/onnxruntime_c_api.cc"
-    )
-    message(STATUS "onnxruntime_ENABLE_WEBASSEMBLY_EXCEPTION_CATCHING_ON_API set")
-    set_source_files_properties(${onnxruntime_webassembly_src_exc} PROPERTIES COMPILE_FLAGS "-sDISABLE_EXCEPTION_CATCHING=0")
-    target_link_options(onnxruntime_webassembly PRIVATE "SHELL:-s DISABLE_EXCEPTION_CATCHING=0")
+    message(STATUS "Exception catching enabled for WASI build")
+    # WASI-SDK doesn't need special flags for exception catching
+    # Exceptions are supported by default with proper unwinding
   endif()
 
   target_link_libraries(onnxruntime_webassembly PRIVATE
@@ -190,212 +201,81 @@ else()
     onnxruntime_mlas
     onnxruntime_optimizer
     onnxruntime_providers
-    ${PROVIDERS_JS}
     ${PROVIDERS_XNNPACK}
-    ${PROVIDERS_WEBNN}
-    ${PROVIDERS_WEBGPU}
     onnxruntime_session
     onnxruntime_util
     re2::re2
   )
-  set(EXPORTED_RUNTIME_METHODS "'stackAlloc','stackRestore','stackSave','UTF8ToString','stringToUTF8','lengthBytesUTF8','getValue','setValue','HEAP8','HEAPU8','HEAP32','HEAPU32'")
+  # WASI-specific link options
   if (onnxruntime_USE_XNNPACK)
     target_link_libraries(onnxruntime_webassembly PRIVATE XNNPACK)
-    string(APPEND EXPORTED_RUNTIME_METHODS ",'addFunction'")
-    target_link_options(onnxruntime_webassembly PRIVATE "SHELL:-s ALLOW_TABLE_GROWTH=1")
-  endif()
-
-  if(onnxruntime_USE_WEBNN)
-    target_link_libraries(onnxruntime_webassembly PRIVATE onnxruntime_providers_webnn)
   endif()
 
   if (onnxruntime_ENABLE_TRAINING)
     target_link_libraries(onnxruntime_webassembly PRIVATE tensorboard)
   endif()
 
-  set(onnxruntime_webassembly_script_deps "${ONNXRUNTIME_ROOT}/wasm/pre.js")
-
-  set(EXPORTED_FUNCTIONS "_malloc,_free")
-  if (onnxruntime_USE_JSEP)
-    string(APPEND EXPORTED_FUNCTIONS ",_JsepOutput,_JsepGetNodeName")
-  endif()
-  if (onnxruntime_USE_WEBGPU)
-    string(APPEND EXPORTED_FUNCTIONS ",_wgpuBufferRelease,_wgpuCreateInstance")
-  endif()
-  set(MAXIMUM_MEMORY "4294967296")
+  # WASI-SDK linker options
   target_link_options(onnxruntime_webassembly PRIVATE
-    "SHELL:--post-js \"${ONNXRUNTIME_ROOT}/wasm/js_post_js.js\""
-  )
-  list(APPEND onnxruntime_webassembly_script_deps "${ONNXRUNTIME_ROOT}/wasm/js_post_js.js")
-  target_link_options(onnxruntime_webassembly PRIVATE
-    "SHELL:-s EXPORTED_RUNTIME_METHODS=[${EXPORTED_RUNTIME_METHODS}]"
-    "SHELL:-s EXPORTED_FUNCTIONS=${EXPORTED_FUNCTIONS}"
-    "SHELL:-s MAXIMUM_MEMORY=${MAXIMUM_MEMORY}"
-    "SHELL:-s EXIT_RUNTIME=0"
-    "SHELL:-s ALLOW_MEMORY_GROWTH=1"
-    "SHELL:-s MODULARIZE=1"
-    "SHELL:-s EXPORT_ALL=0"
-    "SHELL:-s VERBOSE=0"
-    "SHELL:-s FILESYSTEM=0"
-    "SHELL:-s INCOMING_MODULE_JS_API=[locateFile,instantiateWasm,wasmBinary]"
-    "SHELL:-s WASM_BIGINT=1"
-    --no-entry
-    "SHELL:--pre-js \"${ONNXRUNTIME_ROOT}/wasm/pre.js\""
+    -Wl,--allow-undefined
+    -Wl,--export-all
+    -Wl,--no-entry
+    -Wl,--stack-first
+    -Wl,-z,stack-size=1048576  # 1MB stack
   )
 
-  if (onnxruntime_USE_JSEP)
-    target_compile_definitions(onnxruntime_webassembly PRIVATE USE_JSEP=1)
-    target_link_options(onnxruntime_webassembly PRIVATE
-      "SHELL:--pre-js \"${ONNXRUNTIME_ROOT}/wasm/pre-jsep.js\""
-    )
-    list(APPEND onnxruntime_webassembly_script_deps "${ONNXRUNTIME_ROOT}/wasm/pre-jsep.js")
-
-  endif()
-
-  if (onnxruntime_USE_WEBGPU)
-    target_compile_definitions(onnxruntime_webassembly PRIVATE USE_WEBGPU=1)
-    target_link_options(onnxruntime_webassembly PRIVATE
-      "SHELL:--post-js \"${ONNXRUNTIME_ROOT}/wasm/post-webgpu.js\""
-    )
-    list(APPEND onnxruntime_webassembly_script_deps "${ONNXRUNTIME_ROOT}/wasm/post-webgpu.js")
-  endif()
-
-  if (onnxruntime_USE_WEBNN)
-    target_compile_definitions(onnxruntime_webassembly PRIVATE USE_WEBNN=1)
-    if (NOT onnxruntime_USE_JSEP)
-      target_link_options(onnxruntime_webassembly PRIVATE
-        "SHELL:--post-js \"${ONNXRUNTIME_ROOT}/wasm/post-webnn.js\""
-      )
-      list(APPEND onnxruntime_webassembly_script_deps "${ONNXRUNTIME_ROOT}/wasm/post-webnn.js")
-    endif()
-  endif()
-
-  if (onnxruntime_USE_JSEP OR onnxruntime_USE_WEBGPU OR onnxruntime_USE_WEBNN)
-    if (onnxruntime_ENABLE_WEBASSEMBLY_JSPI)
-      target_link_options(onnxruntime_webassembly PRIVATE
-        "SHELL:-s JSPI=1"
-        "SHELL:-s JSPI_EXPORTS=[OrtAppendExecutionProvider,OrtCreateSession,OrtRun,OrtRunWithBinding,OrtBindInput]"
-      )
-    else()
-      # NOTE: "-s ASYNCIFY=1" is required for JSEP to work with WebGPU
-      #       This flag allows async functions to be called from sync functions, in the cost of binary size and
-      #       build time. See https://emscripten.org/docs/porting/asyncify.html for more details.
-      #
-      # if any of the above is enabled, we need to use the asyncify library
-      target_link_options(onnxruntime_webassembly PRIVATE
-        "SHELL:--pre-js \"${ONNXRUNTIME_ROOT}/wasm/pre-async.js\""
-        "SHELL:-s ASYNCIFY=1"
-        "SHELL:-s ASYNCIFY_STACK_SIZE=65536"
-      )
-      list(APPEND onnxruntime_webassembly_script_deps "${ONNXRUNTIME_ROOT}/wasm/pre-async.js")
-    endif()
-  endif()
-
-  if (onnxruntime_EMSCRIPTEN_SETTINGS)
-    foreach(setting IN LISTS onnxruntime_EMSCRIPTEN_SETTINGS)
-      target_link_options(onnxruntime_webassembly PRIVATE "SHELL:-s ${setting}")
-    endforeach()
-  endif()
-
+  # Memory configuration for WASI
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    if (CMAKE_CXX_FLAGS MATCHES "sanitize=address")
-        # The integer value below might often need be adjusted.
-        target_link_options(onnxruntime_webassembly PRIVATE "-sINITIAL_MEMORY=786432000")
-        target_link_options(onnxruntime_webassembly PRIVATE "-sASSERTIONS=2")
-    else()
-        # Enable SAFE_HEAP in debug build
-        target_link_options(onnxruntime_webassembly PRIVATE
-          # NOTE: use "SHELL:-s ASSERTIONS=2" to enable more strict assertions, which may help debugging segfaults.
-          #       However, it may be very slow.
-          # "SHELL:-s ASSERTIONS=2"
-          "SHELL:-s ASSERTIONS=1"
-          "SHELL:-s SAFE_HEAP=1"
-          "SHELL:-s STACK_OVERFLOW_CHECK=2"
-        )
-    endif()
+    target_link_options(onnxruntime_webassembly PRIVATE
+      -Wl,--initial-memory=67108864  # 64MB initial
+      -Wl,--max-memory=2147483648    # 2GB max
+    )
+    target_compile_options(onnxruntime_webassembly PRIVATE -g)
   else()
     target_link_options(onnxruntime_webassembly PRIVATE
-      "SHELL:-s ASSERTIONS=0"
-      "SHELL:-s SAFE_HEAP=0"
-      "SHELL:-s STACK_OVERFLOW_CHECK=0"
-      --closure 1
+      -Wl,--initial-memory=16777216  # 16MB initial
+      -Wl,--max-memory=4294967296    # 4GB max
     )
+    # Add optimization flags for release
+    target_compile_options(onnxruntime_webassembly PRIVATE -O3)
+    target_link_options(onnxruntime_webassembly PRIVATE -O3)
   endif()
 
-  if (onnxruntime_USE_WEBNN)
-    set_property(TARGET onnxruntime_webassembly APPEND_STRING PROPERTY LINK_FLAGS " --bind")
-    if (onnxruntime_DISABLE_RTTI)
-      set_property(TARGET onnxruntime_webassembly APPEND_STRING PROPERTY LINK_FLAGS " -fno-rtti -DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0")
-    endif()
+  # RTTI configuration
+  if (onnxruntime_DISABLE_RTTI)
+    target_compile_options(onnxruntime_webassembly PRIVATE -fno-rtti)
   endif()
 
-  if (NOT onnxruntime_ENABLE_WEBASSEMBLY_JSPI)
-    # Set link flag to enable exceptions support, this will override default disabling exception throwing behavior when disable exceptions.
-    target_link_options(onnxruntime_webassembly PRIVATE
-      "SHELL:-s DISABLE_EXCEPTION_THROWING=0"
-    )
-  endif()
-
+  # Profiling support
   if (onnxruntime_ENABLE_WEBASSEMBLY_PROFILING)
-    target_link_options(onnxruntime_webassembly PRIVATE --profiling --profiling-funcs)
+    message(STATUS "Profiling enabled for WASI build")
+    target_compile_options(onnxruntime_webassembly PRIVATE -g)
   endif()
 
-  if (onnxruntime_ENABLE_WEBASSEMBLY_THREADS)
-    target_link_options(onnxruntime_webassembly PRIVATE
-      "SHELL:-s EXPORT_NAME=ortWasmThreaded"
-      "SHELL:-s DEFAULT_PTHREAD_STACK_SIZE=131072"
-      "SHELL:-s PTHREAD_POOL_SIZE=Module[\\\"numThreads\\\"]-1"
-    )
-  else()
-    target_link_options(onnxruntime_webassembly PRIVATE
-      "SHELL:-s EXPORT_NAME=ortWasm"
-    )
-  endif()
-
-  #
-  # Apply post-processing script for the generated JavaScript file
-  #
-  list(APPEND onnxruntime_webassembly_script_deps "${ONNXRUNTIME_ROOT}/wasm/wasm_post_build.js")
-  add_custom_command(
-    TARGET onnxruntime_webassembly
-    POST_BUILD
-    # Backup file at $<TARGET_FILE_NAME:onnxruntime_webassembly>.bak
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE_NAME:onnxruntime_webassembly>" "$<TARGET_FILE_NAME:onnxruntime_webassembly>.bak"
-    COMMAND ${CMAKE_COMMAND} -E echo "Performing post-process for $<TARGET_FILE_NAME:onnxruntime_webassembly>"
-    COMMAND ${NODE_EXECUTABLE} "${ONNXRUNTIME_ROOT}/wasm/wasm_post_build.js" "$<TARGET_FILE_NAME:onnxruntime_webassembly>"
-  )
-
-  set_target_properties(onnxruntime_webassembly PROPERTIES LINK_DEPENDS "${onnxruntime_webassembly_script_deps}")
-
+  # Build target name for WASI
   set(target_name_list ort)
 
   if (onnxruntime_ENABLE_TRAINING_APIS)
-    list(APPEND target_name_list  "training")
+    list(APPEND target_name_list "training")
   endif()
 
-  list(APPEND target_name_list  "wasm")
+  list(APPEND target_name_list "wasi")
 
   if (onnxruntime_ENABLE_WEBASSEMBLY_RELAXED_SIMD)
-    list(APPEND target_name_list  "relaxedsimd")
+    list(APPEND target_name_list "relaxedsimd")
+    target_compile_options(onnxruntime_webassembly PRIVATE -mrelaxed-simd)
   elseif (onnxruntime_ENABLE_WEBASSEMBLY_SIMD)
-    list(APPEND target_name_list  "simd")
+    list(APPEND target_name_list "simd")
+    target_compile_options(onnxruntime_webassembly PRIVATE -msimd128)
   endif()
 
-  if (onnxruntime_ENABLE_WEBASSEMBLY_THREADS)
-    list(APPEND target_name_list  "threaded")
-  endif()
+  list(JOIN target_name_list "-" target_name)
 
-  list(JOIN target_name_list  "-" target_name)
+  # Set output name and extension
+  set_target_properties(onnxruntime_webassembly PROPERTIES
+    OUTPUT_NAME ${target_name}
+    SUFFIX ".wasm"
+  )
 
-  if (onnxruntime_USE_JSEP)
-    string(APPEND target_name ".jsep")
-  elseif (onnxruntime_USE_WEBGPU OR onnxruntime_USE_WEBNN)
-    if (onnxruntime_ENABLE_WEBASSEMBLY_JSPI)
-      string(APPEND target_name ".jspi")
-    else()
-      string(APPEND target_name ".asyncify")
-    endif()
-  endif()
-
-  set_target_properties(onnxruntime_webassembly PROPERTIES OUTPUT_NAME ${target_name} SUFFIX ".mjs")
+  message(STATUS "Building WASI target: ${target_name}.wasm")
 endif()
