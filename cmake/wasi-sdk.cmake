@@ -48,7 +48,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Compiler flags for WASI
 # Use single-threaded model which provides pthread stubs (WASI-SDK 2.7+)
-set(WASI_FLAGS "-D__wasi__ -mthread-model single")
+# Enable signal emulation for signal handling support
+# Enable mmap emulation for memory mapping support
+# Enable getpid emulation for process ID support
+set(WASI_FLAGS "-D__wasi__ -mthread-model single -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_GETPID")
 
 set(CMAKE_C_FLAGS_INIT "${WASI_FLAGS}")
 set(CMAKE_CXX_FLAGS_INIT "${WASI_FLAGS}")
@@ -59,7 +62,10 @@ set(CMAKE_CXX_FLAGS "${WASI_FLAGS}" CACHE STRING "CXX flags" FORCE)
 
 # Linker flags for WASI
 # Note: -mthread-model single also affects linking
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,--allow-undefined -Wl,--export-all -mthread-model single")
+# Link with wasi-emulated-signal for signal support
+# Link with wasi-emulated-mman for mmap support
+# Link with wasi-emulated-getpid for process ID support
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,--allow-undefined -Wl,--export-all -mthread-model single -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid")
 
 # Cache the compiler checks
 set(CMAKE_C_COMPILER_WORKS 1 CACHE INTERNAL "")
@@ -73,3 +79,6 @@ message(STATUS "  C Compiler: ${CMAKE_C_COMPILER}")
 message(STATUS "  C++ Compiler: ${CMAKE_CXX_COMPILER}")
 message(STATUS "  Sysroot: ${CMAKE_SYSROOT}")
 message(STATUS "  Thread Model: single (pthread stubs)")
+message(STATUS "  Signal Support: emulated")
+message(STATUS "  Mmap Support: emulated")
+message(STATUS "  Process ID: emulated")

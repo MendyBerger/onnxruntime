@@ -8,7 +8,14 @@
 
 #pragma once
 
+// Support both Emscripten and WASI builds
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#else
+// For WASI builds, EMSCRIPTEN_KEEPALIVE is not needed as we export all symbols
+// We use __attribute__((used)) to prevent the linker from removing unused functions
+#define EMSCRIPTEN_KEEPALIVE __attribute__((used)) __attribute__((visibility("default")))
+#endif
 
 #ifdef USE_WEBGPU
 #include <webgpu/webgpu.h>

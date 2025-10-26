@@ -9,7 +9,7 @@
 #include <string>
 #include <filesystem>
 #if defined(__wasm__)
-#include <emscripten.h>
+// #include <emscripten.h>
 #endif
 
 #include <gsl/gsl>
@@ -1153,7 +1153,7 @@ Status GetExtDataFromTensorProto(const Env& env,
 
   TensorShape tensor_shape = utils::GetTensorShapeFromTensorProto(tensor_proto);
   const DataTypeImpl* const type = DataTypeImpl::TensorTypeFromONNXEnum(tensor_proto.data_type())->GetElementType();
-  MLDataType ml_tensor_type = DataTypeImpl::GetType<Tensor>();
+  // MLDataType ml_tensor_type = DataTypeImpl::GetType<Tensor>();
   const auto& name = tensor_proto.name();
 
   if (external_data_file_path == onnxruntime::utils::kTensorProtoMemoryAddressTag) {
@@ -1166,29 +1166,29 @@ Status GetExtDataFromTensorProto(const Env& env,
     Tensor::InitOrtValue(std::move(tensor), ort_value);
   } else {
 #if defined(__wasm__)
-    ORT_RETURN_IF(file_offset < 0 || file_offset + raw_data_safe_len >= 4294967296,
-                  "External initializer: ", tensor_proto.name(), " offset: ", file_offset,
-                  " size to read: ", static_cast<size_t>(raw_data_safe_len),
-                  " are out of bounds or can not be read in full (>4GB).");
+    // ORT_RETURN_IF(file_offset < 0 || file_offset + raw_data_safe_len >= 4294967296,
+    //               "External initializer: ", tensor_proto.name(), " offset: ", file_offset,
+    //               " size to read: ", static_cast<size_t>(raw_data_safe_len),
+    //               " are out of bounds or can not be read in full (>4GB).");
 
-    auto buffer = std::make_unique<char[]>(raw_data_safe_len);
-    ORT_RETURN_IF_ERROR(LoadWebAssemblyExternalData(env,
-                                                    external_data_file_path,
-                                                    file_offset,
-                                                    raw_data_safe_len,
-                                                    ExternalDataLoadType::CPU,
-                                                    buffer.get()));
+    // auto buffer = std::make_unique<char[]>(raw_data_safe_len);
+    // ORT_RETURN_IF_ERROR(LoadWebAssemblyExternalData(env,
+    //                                                 external_data_file_path,
+    //                                                 file_offset,
+    //                                                 raw_data_safe_len,
+    //                                                 ExternalDataLoadType::CPU,
+    //                                                 buffer.get()));
 
-    auto p_tensor = std::make_unique<Tensor>(type, tensor_shape, buffer.get(),
-                                             OrtMemoryInfo(CPU, OrtAllocatorType::OrtDeviceAllocator));
+    // auto p_tensor = std::make_unique<Tensor>(type, tensor_shape, buffer.get(),
+    //                                          OrtMemoryInfo(CPU, OrtAllocatorType::OrtDeviceAllocator));
 
-    std::function<void(void*)> deleter = [ext_data = buffer.get()](void* t) {
-      delete reinterpret_cast<Tensor*>(t);
-      delete[] ext_data;
-    };
+    // std::function<void(void*)> deleter = [ext_data = buffer.get()](void* t) {
+    //   delete reinterpret_cast<Tensor*>(t);
+    //   delete[] ext_data;
+    // };
 
-    ort_value.Init(p_tensor.release(), ml_tensor_type, std::move(deleter));
-    buffer.release();
+    // ort_value.Init(p_tensor.release(), ml_tensor_type, std::move(deleter));
+    // buffer.release();
 
 #else
     //  The GetFileContent function doesn't report error if the requested data range is invalid. Therefore we need to
