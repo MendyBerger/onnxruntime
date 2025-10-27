@@ -178,8 +178,13 @@ else()
 
   source_group(TREE ${REPO_ROOT} FILES ${onnxruntime_webassembly_src})
 
+  # Create a separate library for WASI stubs that will be linked first
+  add_library(wasi_abseil_stubs OBJECT "${CMAKE_CURRENT_SOURCE_DIR}/wasi_abseil_stubs.cc")
+  target_compile_features(wasi_abseil_stubs PRIVATE cxx_std_17)
+
   add_executable(onnxruntime_webassembly
     ${onnxruntime_webassembly_src}
+    $<TARGET_OBJECTS:wasi_abseil_stubs>
   )
 
   # WASI Preview 2 component model requires exceptions to be disabled

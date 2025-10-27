@@ -131,6 +131,29 @@ This affects:
 
 For WASI builds, all functionality must be statically linked at compile time.
 
+### Abseil Synchronization Primitives Stubbed
+
+WASI Preview 2 doesn't support threading primitives, so Abseil's synchronization functions are stubbed out:
+
+**File: `cmake/wasi_abseil_stubs.cc`**
+
+Provides no-op implementations for:
+- `AbslInternalPerThreadSemPost_lts_20250512()` - No-op (single-threaded)
+- `AbslInternalPerThreadSemWait_lts_20250512()` - No-op (single-threaded)
+- `AbslInternalPerThreadSemPoke_lts_20250512()` - No-op (single-threaded)
+
+**File: `cmake/external/abseil-cpp.cmake`**
+
+Excluded synchronization libraries from WASI builds:
+- `absl::synchronization` - Conditionally excluded
+- `absl::graphcycles_internal` - Conditionally excluded
+
+**Compile Flags Added:**
+- `ABSL_FORCE_WAITER_MODE=4` - Use STDCPP waiter mode (standard C++ primitives)
+  - Mode 0 (FUTEX) would require Linux futex syscalls not available in WASI
+  - Mode 4 (STDCPP) uses standard C++ synchronization primitives (safe for single-threaded WASI)
+- Thread-local storage is auto-detected by Abseil based on `-mthread-model single`
+
 ## Future Considerations
 
 - **WASI Preview 3+**: May add component-model-compatible exception handling

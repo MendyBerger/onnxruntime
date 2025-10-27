@@ -244,8 +244,8 @@ unsigned int GetProcessId() {
 #ifdef _WIN32
   return static_cast<unsigned int>(GetCurrentProcessId());
 #elif defined(__MACH__) || defined(__wasm__) || defined(_AIX)
-  // return static_cast<unsigned int>(getpid());
-  return 42;
+  return static_cast<unsigned int>(getpid());
+  // return 42;
 #else
   return static_cast<unsigned int>(syscall(SYS_getpid));
 #endif

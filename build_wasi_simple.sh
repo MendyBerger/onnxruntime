@@ -42,6 +42,7 @@ cmake "$SCRIPT_DIR/cmake" \
     -Donnxruntime_MINIMAL_BUILD=ON \
     -Donnxruntime_DISABLE_EXCEPTIONS=ON \
     -Donnxruntime_DISABLE_RTTI=ON \
+    -Donnxruntime_DISABLE_ABSEIL=ON \
     -DONNX_DISABLE_EXCEPTIONS=ON \
     "$@"
 
