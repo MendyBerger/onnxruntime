@@ -40,6 +40,7 @@ cmake "$SCRIPT_DIR/cmake" \
     -Donnxruntime_BUILD_UNIT_TESTS=OFF \
     -Donnxruntime_BUILD_BENCHMARKS=OFF \
     -Donnxruntime_MINIMAL_BUILD=ON \
+    -Donnxruntime_EXTENDED_MINIMAL_BUILD=ON \
     -Donnxruntime_DISABLE_EXCEPTIONS=ON \
     -Donnxruntime_DISABLE_RTTI=ON \
     -Donnxruntime_DISABLE_ABSEIL=ON \
