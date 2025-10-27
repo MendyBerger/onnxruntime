@@ -173,7 +173,8 @@ if (onnxruntime_BUILD_WEBASSEMBLY_STATIC_LIB)
     endif()
 else()
   file(GLOB_RECURSE onnxruntime_webassembly_src CONFIGURE_DEPENDS
-    "${ONNXRUNTIME_ROOT}/wasm/api.cc"
+    # "${ONNXRUNTIME_ROOT}/wasm/api.cc" TODO:
+    "${ONNXRUNTIME_ROOT}/wasm/squeezenet.cpp"
   )
 
   source_group(TREE ${REPO_ROOT} FILES ${onnxruntime_webassembly_src})
