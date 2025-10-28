@@ -44,6 +44,8 @@ cmake "$SCRIPT_DIR/cmake" \
     -Donnxruntime_DISABLE_EXCEPTIONS=ON \
     -Donnxruntime_DISABLE_RTTI=ON \
     -Donnxruntime_DISABLE_ABSEIL=ON \
+    -Donnxruntime_USE_WEBGPU=ON \
+    -Donnxruntime_WGSL_TEMPLATE=static \
     -DONNX_DISABLE_EXCEPTIONS=ON \
     "$@"
 

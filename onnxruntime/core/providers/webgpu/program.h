@@ -349,15 +349,11 @@ class ProgramBase {
   inline const std::string& CacheHint() const { return cache_hint_; }
   inline const std::vector<ProgramInput>& Inputs() const { return inputs_; }
   inline void setSegmentsForInput(size_t index, uint32_t segments) {
-    if (index >= inputs_.size()) {
-      throw std::out_of_range("input index out of range");
-    }
+    ORT_ENFORCE(index < inputs_.size(), "input index out of range");
     inputs_[index].segments = segments;
   }
   inline void setSegmentsForOutput(size_t index, uint32_t segments) {
-    if (index >= outputs_.size()) {
-      throw std::out_of_range("output index out of range");
-    }
+    ORT_ENFORCE(index < outputs_.size(), "output index out of range");
     outputs_[index].segments = segments;
   }
   inline const std::vector<ProgramOutput>& Outputs() const { return outputs_; }

@@ -18,7 +18,8 @@
 #endif
 
 #ifdef USE_WEBGPU
-#include <webgpu/webgpu.h>
+// #include <webgpu/webgpu.h>
+#include "/media/mendyberger/USB-Card/wasi/dawn/out/Release/gen/include/dawn/webgpu.h"
 #endif
 
 #include <stddef.h>

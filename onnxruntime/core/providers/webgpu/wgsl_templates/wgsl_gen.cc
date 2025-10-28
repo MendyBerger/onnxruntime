@@ -82,9 +82,7 @@ constexpr const char* kHelperPointerProperty =
 struct DuktapeContext {
   DuktapeContext() {
     ctx = duk_create_heap_default();
-    if (!ctx) {
-      throw std::runtime_error("Failed to create Duktape heap");
-    }
+    ORT_ENFORCE(ctx != nullptr, "Failed to create Duktape heap");
     LoadTemplatesJS();
   }
   ~DuktapeContext() {
@@ -116,9 +114,7 @@ struct DuktapeContext {
 
     // Read the templates.js file
     std::ifstream file(templates_js_path);
-    if (!file.is_open()) {
-      throw std::runtime_error("Failed to open templates.js file at: " + templates_js_path);
-    }
+    ORT_ENFORCE(file.is_open(), "Failed to open templates.js file at: " + templates_js_path);
 
     std::string js_content((std::istreambuf_iterator<char>(file)),
                            std::istreambuf_iterator<char>());
@@ -131,7 +127,7 @@ struct DuktapeContext {
         error_msg += duk_get_string(ctx, -1);
       }
       duk_pop(ctx);
-      throw std::runtime_error(error_msg);
+      ORT_THROW(error_msg);
     }
     duk_pop(ctx);  // Pop the result
 
@@ -332,7 +328,6 @@ Status ApplyTemplateDynamic(ShaderHelper& shader_helper,
   static DuktapeContext duktape_context;
   duk_context* ctx = duktape_context.ctx;
 
-  try {
     // Get the $templates object
     duk_get_global_string(ctx, "$templates");
     if (!duk_is_object(ctx, -1)) {
@@ -418,12 +413,6 @@ Status ApplyTemplateDynamic(ShaderHelper& shader_helper,
 
     duk_pop_2(ctx);  // Pop result and $templates
     return Status::OK();
-
-  } catch (const std::exception& e) {
-    // Clean up stack
-    duk_set_top(ctx, 0);
-    return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "Exception in template execution: ", e.what());
-  }
 }
 
 #endif

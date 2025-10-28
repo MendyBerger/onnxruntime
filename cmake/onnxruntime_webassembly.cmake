@@ -87,16 +87,16 @@ function(bundle_static_library bundled_target_name)
   add_dependencies(${bundled_target_name} bundling_target)
 endfunction()
 
-# WASI doesn't support JSEP or WebGPU directly
+# WASI doesn't support JSEP
 if (onnxruntime_USE_JSEP)
   message(WARNING "JSEP is not supported with WASI-SDK, disabling.")
   set(onnxruntime_USE_JSEP OFF)
 endif()
 
-if (onnxruntime_USE_WEBGPU)
-  message(WARNING "WebGPU is not supported with WASI-SDK, disabling.")
-  set(onnxruntime_USE_WEBGPU OFF)
-endif()
+# if (onnxruntime_USE_WEBGPU)
+#   message(WARNING "WebGPU is not supported with WASI-SDK, disabling.")
+#   set(onnxruntime_USE_WEBGPU OFF)
+# endif()
 
 # WASI doesn't support threads in the traditional sense
 if (onnxruntime_ENABLE_WEBASSEMBLY_THREADS)
@@ -208,6 +208,7 @@ else()
     onnxruntime_optimizer
     onnxruntime_providers
     ${PROVIDERS_XNNPACK}
+    ${PROVIDERS_WEBGPU}
     onnxruntime_session
     onnxruntime_util
     re2::re2
