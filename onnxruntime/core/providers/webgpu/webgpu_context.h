@@ -78,6 +78,10 @@ class WebGpuContextFactory {
   static wgpu::Instance default_instance_;
 };
 
+// Utility functions for WebGPU context management
+void CleanupWebGpuContexts();
+WGPUDevice GetDevice(int context_id);
+
 // Class WebGpuContext includes all necessary resources for the context.
 class WebGpuContext final {
  public:

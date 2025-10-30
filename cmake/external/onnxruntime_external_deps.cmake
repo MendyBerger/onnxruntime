@@ -637,7 +637,7 @@ if (onnxruntime_USE_WEBGPU)
     set(DAWN_ENABLE_NULL OFF CACHE BOOL "" FORCE)
     set(DAWN_BUILD_PROTOBUF OFF CACHE BOOL "" FORCE)
     set(DAWN_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
       if (onnxruntime_BUILD_DAWN_SHARED_LIBRARY)
         set(DAWN_BUILD_MONOLITHIC_LIBRARY SHARED CACHE BOOL "" FORCE)
         set(DAWN_ENABLE_INSTALL ON CACHE BOOL "" FORCE)
@@ -711,10 +711,25 @@ if (onnxruntime_USE_WEBGPU)
         endif()
         # We are currently always using the D3D12 backend.
         set(DAWN_ENABLE_D3D11 OFF CACHE BOOL "" FORCE)
+      elseif (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+        # WASI doesn't have native GPU backends, use NULL backend or configure for host imports
+        message(STATUS "Configuring Dawn for WASI with NULL backend")
+        set(DAWN_ENABLE_NULL ON CACHE BOOL "" FORCE)
+        set(DAWN_ENABLE_VULKAN OFF CACHE BOOL "" FORCE)
+        set(DAWN_ENABLE_METAL OFF CACHE BOOL "" FORCE)
+        set(DAWN_ENABLE_D3D11 OFF CACHE BOOL "" FORCE)
+        set(DAWN_ENABLE_D3D12 OFF CACHE BOOL "" FORCE)
+        set(DAWN_ENABLE_DESKTOP_GL OFF CACHE BOOL "" FORCE)
+        set(DAWN_ENABLE_OPENGLES OFF CACHE BOOL "" FORCE)
+        set(TINT_BUILD_SPV_WRITER OFF CACHE BOOL "" FORCE)
+        set(TINT_BUILD_HLSL_WRITER OFF CACHE BOOL "" FORCE)
+      elseif (CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+        # Emscripten uses emwgpu which provides WebGPU stubs
+        # Backend configuration is handled elsewhere
       endif()
     endif()
 
-    if (onnxruntime_CUSTOM_DAWN_SRC_PATH)
+    if (NOT CMAKE_SYSTEM_NAME STREQUAL "WASI" AND onnxruntime_CUSTOM_DAWN_SRC_PATH)
       set(DAWN_FETCH_DEPENDENCIES OFF CACHE BOOL "" FORCE)
       # use the custom dawn source path if provided
       #
@@ -764,10 +779,15 @@ if (onnxruntime_USE_WEBGPU)
       )
     endif()
 
-    onnxruntime_fetchcontent_makeavailable(dawn)
+    if (NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
+      onnxruntime_fetchcontent_makeavailable(dawn)
+    else()
+      # For WASI, skip building Dawn - WebGPU functions will be imported from host
+      message(STATUS "Skipping Dawn build for WASI - WebGPU functions will be imported from host environment")
+    endif()
   endif()
 
-  if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
     if (onnxruntime_BUILD_DAWN_SHARED_LIBRARY)
       list(APPEND onnxruntime_EXTERNAL_LIBRARIES dawn::webgpu_dawn)
     else()

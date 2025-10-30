@@ -56,7 +56,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Disable unwind tables to remove exception handling overhead
 # Use Abseil STDCPP waiter mode (4) - standard C++ primitives for single-threaded WASI
 # Disable 64-to-32 bit conversion warnings for 32-bit WebAssembly target
-set(WASI_FLAGS "-D__wasi__ -mthread-model single -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_GETPID -fno-exceptions -fno-rtti -fno-unwind-tables -fno-asynchronous-unwind-tables -DABSL_FORCE_WAITER_MODE=4 -Wno-shorten-64-to-32")
+# Define __wasm__ to enable WebAssembly-specific code paths (including WebGPU provider)
+set(WASI_FLAGS "-D__wasi__ -D__wasm__ -mthread-model single -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_GETPID -fno-exceptions -fno-rtti -fno-unwind-tables -fno-asynchronous-unwind-tables -DABSL_FORCE_WAITER_MODE=4 -Wno-shorten-64-to-32")
 
 set(CMAKE_C_FLAGS_INIT "${WASI_FLAGS}")
 set(CMAKE_CXX_FLAGS_INIT "${WASI_FLAGS}")

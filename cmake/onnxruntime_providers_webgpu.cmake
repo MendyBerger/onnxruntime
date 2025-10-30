@@ -70,7 +70,17 @@
       )
     endif()
   else()
-    onnxruntime_add_include_to_target(onnxruntime_providers_webgpu dawn::dawncpp_headers dawn::dawn_headers)
+    # For WASI, we need to handle Dawn differently since it's not natively supported
+    if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+      # For WASI builds, WebGPU functions will be imported from the host environment
+      # Use Emscripten's WebGPU headers which provide the standard WebGPU C/C++ API
+      message(STATUS "Using Emscripten WebGPU headers for WASI build")
+      target_include_directories(onnxruntime_providers_webgpu PRIVATE
+        "${REPO_ROOT}/cmake/external/emsdk/upstream/emscripten/system/include"
+      )
+    else()
+      onnxruntime_add_include_to_target(onnxruntime_providers_webgpu dawn::dawncpp_headers dawn::dawn_headers)
+    endif()
 
     set(onnxruntime_providers_webgpu_dll_deps)
 
@@ -101,10 +111,13 @@
 
       list(APPEND onnxruntime_providers_webgpu_dll_deps "$<TARGET_FILE:dawn::webgpu_dawn>")
     else()
-      if (NOT onnxruntime_USE_EXTERNAL_DAWN)
-        target_link_libraries(onnxruntime_providers_webgpu dawn::dawn_native)
+      # Skip Dawn linking for WASI - will use host-provided WebGPU
+      if (NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
+        if (NOT onnxruntime_USE_EXTERNAL_DAWN)
+          target_link_libraries(onnxruntime_providers_webgpu dawn::dawn_native)
+        endif()
+        target_link_libraries(onnxruntime_providers_webgpu dawn::dawn_proc)
       endif()
-      target_link_libraries(onnxruntime_providers_webgpu dawn::dawn_proc)
     endif()
 
     if (WIN32 AND onnxruntime_ENABLE_DAWN_BACKEND_D3D12)
