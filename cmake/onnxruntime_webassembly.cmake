@@ -213,6 +213,27 @@ else()
     onnxruntime_util
     re2::re2
   )
+
+  # For WebGPU: Add wasi-webgpu-headers adapter sources
+  if (onnxruntime_USE_WEBGPU)
+    set(WASI_WEBGPU_HEADERS_PATH "/media/mendyberger/USB-Card/wasi/wasi-webgpu-headers")
+    message(STATUS "WebGPU enabled: Linking wasi-webgpu-headers adapters from ${WASI_WEBGPU_HEADERS_PATH}")
+
+    target_link_libraries(onnxruntime_webassembly PRIVATE
+      "${WASI_WEBGPU_HEADERS_PATH}/imports_component_type.o"
+    )
+
+    # # Add include directory for imports.h
+    # target_include_directories(onnxruntime_webassembly PRIVATE
+    #   "${WASI_WEBGPU_HEADERS_PATH}"
+    # )
+
+    # Link the WebGPU adapter object files
+    target_sources(onnxruntime_webassembly PRIVATE
+      "${WASI_WEBGPU_HEADERS_PATH}/webgpu.c"
+      "${WASI_WEBGPU_HEADERS_PATH}/imports.c"
+    )
+  endif()
   # WASI-specific link options
   if (onnxruntime_USE_XNNPACK)
     target_link_libraries(onnxruntime_webassembly PRIVATE XNNPACK)

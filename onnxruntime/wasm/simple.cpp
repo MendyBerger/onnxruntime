@@ -6,7 +6,7 @@
 
 // #include "/media/mendyberger/USB-Card/wasi/wasi-webgpu-headers/webgpu/webgpu.h"
 // #include "/media/mendyberger/USB-Card/wasi/wasi-webgpu-headers/imports.h"
-#include "/media/mendyberger/USB-Card/wasi/wasi-webgpu-headers/imports.c"
+// #include "/media/mendyberger/USB-Card/wasi/wasi-webgpu-headers/imports.c"
 
 
 int main() {
