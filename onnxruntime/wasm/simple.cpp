@@ -4,6 +4,11 @@
 #include <cassert> // For assert()
 #include <onnxruntime_cxx_api.h>
 
+// #include "/media/mendyberger/USB-Card/wasi/wasi-webgpu-headers/webgpu/webgpu.h"
+// #include "/media/mendyberger/USB-Card/wasi/wasi-webgpu-headers/imports.h"
+#include "/media/mendyberger/USB-Card/wasi/wasi-webgpu-headers/imports.c"
+
+
 int main() {
     // 1. Initialize ONNX Runtime Environment
     //    (This must be a pointer or it will be destroyed when it goes out of scope)
