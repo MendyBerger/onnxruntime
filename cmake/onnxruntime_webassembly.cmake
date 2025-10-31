@@ -250,7 +250,7 @@ else()
     -Wl,--no-entry
     -Wl,--stack-first
     -Wl,-z,stack-size=1048576  # 1MB stack
-    -mexec-model=reactor  # Use reactor model for better compatibility with host imports
+    # -mexec-model=reactor  # Use reactor model for better compatibility with host imports
   )
 
   # Memory configuration for WASI
