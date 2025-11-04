@@ -452,8 +452,12 @@ BufferManager::BufferManager(WebGpuContext& context, BufferCacheMode storage_buf
 
 void BufferManager::Upload(void* src, WGPUBuffer dst, size_t size) const {
   // If the buffer is mapped, we can directly write to it.
-  void* mapped_data = wgpuBufferGetMappedRange(dst, 0, WGPU_WHOLE_MAP_SIZE);  // ensure the buffer is mapped
-  if (mapped_data) {
+  // Check the map state first to avoid calling GetMappedRange on an unmapped buffer
+  WGPUBufferMapState map_state = wgpuBufferGetMapState(dst);
+  void* mapped_data;
+  if (map_state == WGPUBufferMapState_Mapped) {
+    mapped_data = wgpuBufferGetMappedRange(dst, 0, WGPU_WHOLE_MAP_SIZE);
+  // if (mapped_data) {
     memcpy(mapped_data, src, size);
     wgpuBufferUnmap(dst);
     return;
@@ -520,12 +524,12 @@ WGPUBuffer BufferManager::Create(size_t size, wgpu::BufferUsage usage) const {
 }
 
 bool BufferManager::SupportsUMA() const {
-#if !defined(__wasm__)
-  // Check if the device supports the BufferMapExtendedUsages feature
-  return context_.DeviceHasFeature(wgpu::FeatureName::BufferMapExtendedUsages);
-#else
+// #if !defined(__wasm__)
+//   // Check if the device supports the BufferMapExtendedUsages feature
+//   return context_.DeviceHasFeature(wgpu::FeatureName::BufferMapExtendedUsages);
+// #else
   return false;
-#endif  // !defined(__wasm__)
+// #endif  // !defined(__wasm__)
 }
 
 void BufferManager::Release(WGPUBuffer buffer) const {

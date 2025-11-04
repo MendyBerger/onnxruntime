@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include <cassert> // For assert()
 #include <onnxruntime_cxx_api.h>
 
@@ -18,6 +19,22 @@ int main() {
     Ort::SessionOptions session_options;
     session_options.SetIntraOpNumThreads(1);
     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+
+    // Enable WebGPU Execution Provider
+    std::cout << "Enabling WebGPU execution provider..." << std::endl;
+    // try {
+        // AppendExecutionProvider adds the WebGPU provider
+        // This will use WebGPU for operations that support it, falling back to CPU for unsupported ops
+        std::unordered_map<std::string, std::string> webgpu_options;
+        // You can add options here, e.g.:
+        // webgpu_options["deviceId"] = "0";
+        // webgpu_options["preferredLayout"] = "NCHW";
+        session_options.AppendExecutionProvider("WebGPU", webgpu_options);
+        std::cout << "WebGPU provider enabled successfully." << std::endl;
+    // } catch (const std::exception& e) {
+    //     std::cerr << "Failed to enable WebGPU provider: " << e.what() << std::endl;
+    //     std::cerr << "Falling back to CPU execution." << std::endl;
+    // }
 
     // 3. Create Session and Load Model
     const char* model_path = "simple_model.ort";

@@ -119,6 +119,76 @@ void* _ZN4absl12lts_2025051224synchronization_internal24GetCurrentThreadIdentity
     return &dummy_identity;
 }
 
+// GraphCycles stubs for WASI - no-op implementations for single-threaded environment
+// _ZN4absl12lts_2025051224synchronization_internal11GraphCycles10RemoveNodeEPv
+// This is: absl::lts_20250512::synchronization_internal::GraphCycles::RemoveNode(void*)
+// Member function, takes 'this' pointer as first argument
+void _ZN4absl12lts_2025051224synchronization_internal11GraphCycles10RemoveNodeEPv(void* /*this_ptr*/, void* /*node*/) __attribute__((visibility("default"), used)) {
+    // No-op: Single-threaded WASI doesn't need cycle detection
+}
+
+// _ZN4absl12lts_2025051224synchronization_internal11GraphCycles5GetIdEPv
+// This is: absl::lts_20250512::synchronization_internal::GraphCycles::GetId(void*)
+// Member function, takes 'this' pointer as first argument
+int32_t _ZN4absl12lts_2025051224synchronization_internal11GraphCycles5GetIdEPv(void* /*this_ptr*/, void* /*node*/) __attribute__((visibility("default"), used)) {
+    // Return a dummy ID for single-threaded WASI
+    return 0;
+}
+
+// _ZN4absl12lts_2025051224synchronization_internal11GraphCycles3PtrENS1_7GraphIdE
+// This is: absl::lts_20250512::synchronization_internal::GraphCycles::Ptr(GraphId)
+// Member function, takes 'this' pointer and returns a pointer to the node
+void* _ZN4absl12lts_2025051224synchronization_internal11GraphCycles3PtrENS1_7GraphIdE(void* /*this_ptr*/, int32_t /*graph_id*/) __attribute__((visibility("default"), used)) {
+    // Return a dummy pointer for single-threaded WASI
+    static char dummy_node;
+    return &dummy_node;
+}
+
+// _ZN4absl12lts_2025051224synchronization_internal11GraphCycles10InsertEdgeENS1_7GraphIdES3_
+// This is: absl::lts_20250512::synchronization_internal::GraphCycles::InsertEdge(GraphId, GraphId)
+// Member function, returns bool indicating if edge was inserted (true = success, false = would create cycle)
+bool _ZN4absl12lts_2025051224synchronization_internal11GraphCycles10InsertEdgeENS1_7GraphIdES3_(void* /*this_ptr*/, int32_t /*source_id*/, int32_t /*dest_id*/) __attribute__((visibility("default"), used)) {
+    // Always return true - no cycles in single-threaded WASI
+    return true;
+}
+
+// _ZNK4absl12lts_2025051224synchronization_internal11GraphCycles8FindPathENS1_7GraphIdES3_iPS3_
+// This is: absl::lts_20250512::synchronization_internal::GraphCycles::FindPath(GraphId, GraphId, int, GraphId*) const
+// Const member function (note the 'K' in mangled name), returns path length (0 if no path found)
+int32_t _ZNK4absl12lts_2025051224synchronization_internal11GraphCycles8FindPathENS1_7GraphIdES3_iPS3_(
+    const void* /*this_ptr*/, int32_t /*source_id*/, int32_t /*dest_id*/, int32_t /*max_path_len*/, int32_t* /*path*/) __attribute__((visibility("default"), used)) {
+    // Return 0 - no path (no cycles in single-threaded WASI)
+    return 0;
+}
+
+// _ZN4absl12lts_2025051224synchronization_internal11GraphCycles13GetStackTraceENS1_7GraphIdEPPPv
+// This is: absl::lts_20250512::synchronization_internal::GraphCycles::GetStackTrace(GraphId, void***)
+// Member function, returns the depth of the stack trace
+int32_t _ZN4absl12lts_2025051224synchronization_internal11GraphCycles13GetStackTraceENS1_7GraphIdEPPPv(
+    void* /*this_ptr*/, int32_t /*graph_id*/, void*** /*stack_trace*/) __attribute__((visibility("default"), used)) {
+    // Return 0 - no stack trace for single-threaded WASI
+    return 0;
+}
+
+// _ZN4absl12lts_2025051224synchronization_internal11GraphCycles16UpdateStackTraceENS1_7GraphIdEiPFiPPviE
+// This is: absl::lts_20250512::synchronization_internal::GraphCycles::UpdateStackTrace(GraphId, int, int(*)(void**, int))
+void _ZN4absl12lts_2025051224synchronization_internal11GraphCycles16UpdateStackTraceENS1_7GraphIdEiPFiPPviE(
+    void* /*this_ptr*/, int32_t /*graph_id*/, int32_t /*priority*/, void* /*stack_trace_fn*/, int32_t /*max_depth*/) __attribute__((visibility("default"), used)) {
+    // No-op: Stack trace tracking not needed for single-threaded WASI
+}
+
+// _ZN4absl12lts_2025051224synchronization_internal11GraphCyclesC1Ev
+// This is: absl::lts_20250512::synchronization_internal::GraphCycles::GraphCycles()
+void _ZN4absl12lts_2025051224synchronization_internal11GraphCyclesC1Ev(void* /*this_ptr*/) __attribute__((visibility("default"), used)) {
+    // No-op constructor
+}
+
+// _ZN4absl12lts_2025051224synchronization_internal11GraphCyclesD1Ev
+// This is: absl::lts_20250512::synchronization_internal::GraphCycles::~GraphCycles()
+void _ZN4absl12lts_2025051224synchronization_internal11GraphCyclesD1Ev(void* /*this_ptr*/) __attribute__((visibility("default"), used)) {
+    // No-op destructor
+}
+
 } // extern "C"
 
 #endif // __wasi__

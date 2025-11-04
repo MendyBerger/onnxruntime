@@ -49,8 +49,14 @@ cmake "$SCRIPT_DIR/cmake" \
     -DONNX_DISABLE_EXCEPTIONS=ON \
     "$@"
 
-# Build
-cmake --build . --target onnxruntime_webassembly -j$(nproc)
+    #  -DCMAKE_BUILD_TYPE=Debug \
+    # -DCMAKE_C_FLAGS="-g" \
+    # -DCMAKE_CXX_FLAGS="-g" \
+    # -DCMAKE_VERBOSE_MAKEFILE=ON \
+
+
+# Build with verbose output
+cmake --build . --target onnxruntime_webassembly -j$(nproc) --verbose
 
 echo ""
 echo "Build complete! Output files:"

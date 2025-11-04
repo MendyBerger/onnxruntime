@@ -64,11 +64,11 @@ Status ShaderHelper::Init() {
               "        @builtin(workgroup_id) workgroup_id : vec3<u32>,\n"
               "        @builtin(local_invocation_index) local_idx : u32,\n"
               "        @builtin(local_invocation_id) local_id : vec3<u32>";
-  if (device_.HasFeature(wgpu::FeatureName::Subgroups)) {
-    body_ss_ << ",\n"
-                "        @builtin(subgroup_invocation_id) sg_id : u32,\n"
-                "        @builtin(subgroup_size) sg_size : u32";
-  }
+  // if (device_.HasFeature(wgpu::FeatureName::Subgroups)) {
+  //   body_ss_ << ",\n"
+  //               "        @builtin(subgroup_invocation_id) sg_id : u32,\n"
+  //               "        @builtin(subgroup_size) sg_size : u32";
+  // }
   // When using indirect dispatch, avoid @builtin(num_workgroups) to skip Dawn's validation
   // and duplication overhead in TransformIndirectDispatchBuffer.
   // Instead, the dispatch dimensions will be read from the indirect buffer at runtime.
@@ -401,18 +401,18 @@ Status ShaderHelper::GenerateSourceCode(std::string& code, std::vector<int>& sha
     ORT_RETURN_IF_NOT(device_.HasFeature(wgpu::FeatureName::ShaderF16), "Program ", program_.Name(), " requires f16 but the device does not support it.");
     ss << "enable f16;\n";
   }
-  if (device_.HasFeature(wgpu::FeatureName::Subgroups)) {
-    ss << "enable subgroups;\n";
-  }
-#if !defined(__wasm__)
-  if (device_.HasFeature(wgpu::FeatureName::ChromiumExperimentalSubgroupMatrix)) {
-    ss << "enable chromium_experimental_subgroup_matrix;\n";
+  // if (device_.HasFeature(wgpu::FeatureName::Subgroups)) {
+  //   ss << "enable subgroups;\n";
+  // }
+// #if !defined(__wasm__)
+//   if (device_.HasFeature(wgpu::FeatureName::ChromiumExperimentalSubgroupMatrix)) {
+//     ss << "enable chromium_experimental_subgroup_matrix;\n";
 
-    // Dawn enforces the subgroup matrix builtin arguments to be uniform in change https://dawn-review.googlesource.com/c/dawn/+/236054
-    // Since we use `subgroup_id` as the subgroup matrix builtin argument, we have to turn off this restriction
-    ss << "diagnostic (off, chromium.subgroup_matrix_uniformity);\n";
-  }
-#endif
+//     // Dawn enforces the subgroup matrix builtin arguments to be uniform in change https://dawn-review.googlesource.com/c/dawn/+/236054
+//     // Since we use `subgroup_id` as the subgroup matrix builtin argument, we have to turn off this restriction
+//     ss << "diagnostic (off, chromium.subgroup_matrix_uniformity);\n";
+//   }
+// #endif
 
   //
   // Section constants
