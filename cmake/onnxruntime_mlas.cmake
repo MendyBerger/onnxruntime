@@ -304,7 +304,7 @@ function (setup_arm_neon_nchwc)
   set(mlas_private_compile_definitions ${mlas_private_compile_definitions} PARENT_SCOPE)
 endfunction ()
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR CMAKE_SYSTEM_NAME STREQUAL "WASI")
   if (onnxruntime_ENABLE_WEBASSEMBLY_SIMD)
     file(GLOB_RECURSE mlas_platform_srcs
       "${MLAS_SRC_DIR}/wasm_simd/*.cpp"
@@ -325,6 +325,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     )
   endif()
   target_sources(onnxruntime_mlas PRIVATE ${mlas_platform_srcs})
+  if (onnxruntime_ENABLE_WEBASSEMBLY_SIMD)
+    target_compile_options(onnxruntime_mlas PRIVATE -msimd128)
+  endif()
 elseif(MSVC)
   setup_mlas_source_for_windows()
 else()
