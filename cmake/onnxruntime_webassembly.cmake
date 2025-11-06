@@ -216,7 +216,7 @@ else()
 
   # For WebGPU: Add wasi-webgpu-headers adapter sources
   if (onnxruntime_USE_WEBGPU)
-    set(WASI_WEBGPU_HEADERS_PATH "/media/mendyberger/USB-Card/wasi/wasi-webgpu-headers")
+    set(WASI_WEBGPU_HEADERS_PATH "${CMAKE_BINARY_DIR}/_deps/wasi_webgpu_headers-src")
     message(STATUS "WebGPU enabled: Linking wasi-webgpu-headers adapters from ${WASI_WEBGPU_HEADERS_PATH}")
 
     target_link_libraries(onnxruntime_webassembly PRIVATE

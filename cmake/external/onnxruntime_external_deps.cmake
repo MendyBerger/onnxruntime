@@ -782,8 +782,25 @@ if (onnxruntime_USE_WEBGPU)
     if (NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
       onnxruntime_fetchcontent_makeavailable(dawn)
     else()
-      # For WASI, skip building Dawn - WebGPU functions will be imported from host
-      message(STATUS "Skipping Dawn build for WASI - WebGPU functions will be imported from host environment")
+      # For WASI, use dawn_wasi_webgpu_cpp instead of standard Dawn
+      message(STATUS "Using wasi-webgpu-headers for WASI build")
+      onnxruntime_fetchcontent_declare(
+        wasi_webgpu_headers
+        GIT_REPOSITORY https://github.com/MendyBerger/wasi-webgpu-headers.git
+        GIT_TAG 18d84ac00c832b35669c1c96b6e3dee0718c6c1d
+      )
+      onnxruntime_fetchcontent_makeavailable(wasi_webgpu_headers)
+
+
+
+      # For WASI, use dawn_wasi_webgpu_cpp instead of standard Dawn
+      message(STATUS "Using dawn_wasi_webgpu_cpp for WASI build")
+      onnxruntime_fetchcontent_declare(
+        dawn_wasi_webgpu_cpp
+        GIT_REPOSITORY https://github.com/MendyBerger/dawn_wasi_webgpu_cpp.git
+        GIT_TAG 65c07fb29d2d536d7c99972ade6a25b42e6907db
+      )
+      onnxruntime_fetchcontent_makeavailable(dawn_wasi_webgpu_cpp)
     endif()
   endif()
 

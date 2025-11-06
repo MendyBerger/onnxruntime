@@ -72,11 +72,31 @@
   else()
     # For WASI, we need to handle Dawn differently since it's not natively supported
     if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
-      # For WASI builds, WebGPU functions will be imported from the host environment
-      # Use Emscripten's WebGPU headers which provide the standard WebGPU C/C++ API
-      message(STATUS "Using Emscripten WebGPU headers for WASI build")
+      # For WASI builds, use dawn_wasi_webgpu_cpp which provides WebGPU C++ bindings
+      message(STATUS "Using dawn_wasi_webgpu_cpp for WASI build")
+      # Ensure dawn_wasi_webgpu_cpp is populated (it should be from onnxruntime_external_deps.cmake)
+      FetchContent_GetProperties(dawn_wasi_webgpu_cpp)
+      if(NOT dawn_wasi_webgpu_cpp_POPULATED)
+        message(FATAL_ERROR "dawn_wasi_webgpu_cpp must be populated before configuring webgpu provider")
+      endif()
+      # The wasi_webgpu_headers dependency should also be populated by dawn_wasi_webgpu_cpp's CMakeLists.txt
+      FetchContent_GetProperties(wasi_webgpu_headers)
+      if(NOT wasi_webgpu_headers_POPULATED)
+        message(FATAL_ERROR "wasi_webgpu_headers must be populated (dependency of dawn_wasi_webgpu_cpp)")
+      endif()
+      # The include statement expects "dawn_wasi_webgpu_cpp/webgpu_cpp.h"
+      # The files are in dawn_wasi_webgpu_cpp_SOURCE_DIR root, so we create a subdirectory
+      # structure to match the expected include path
+      set(DAWN_WASI_WEBGPU_CPP_INCLUDE_DIR "${CMAKE_BINARY_DIR}/_deps/dawn_wasi_webgpu_cpp_include")
+      file(MAKE_DIRECTORY "${DAWN_WASI_WEBGPU_CPP_INCLUDE_DIR}/dawn_wasi_webgpu_cpp")
+      # Copy header files to match the expected include structure
+      file(COPY "${dawn_wasi_webgpu_cpp_SOURCE_DIR}/webgpu_cpp.h"
+           "${dawn_wasi_webgpu_cpp_SOURCE_DIR}/webgpu_cpp_chained_struct.h"
+           "${dawn_wasi_webgpu_cpp_SOURCE_DIR}/webgpu_enum_class_bitmasks.h"
+           DESTINATION "${DAWN_WASI_WEBGPU_CPP_INCLUDE_DIR}/dawn_wasi_webgpu_cpp")
       target_include_directories(onnxruntime_providers_webgpu PRIVATE
-        "${REPO_ROOT}/cmake/external/emsdk/upstream/emscripten/system/include"
+        "${DAWN_WASI_WEBGPU_CPP_INCLUDE_DIR}"
+        "${wasi_webgpu_headers_SOURCE_DIR}"  # Add this for <webgpu/webgpu.h>
       )
     else()
       onnxruntime_add_include_to_target(onnxruntime_providers_webgpu dawn::dawncpp_headers dawn::dawn_headers)

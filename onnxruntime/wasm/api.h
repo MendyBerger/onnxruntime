@@ -17,10 +17,6 @@
 #define EMSCRIPTEN_KEEPALIVE __attribute__((used)) __attribute__((visibility("default")))
 #endif
 
-#ifdef USE_WEBGPU
-// #include <webgpu/webgpu.h>
-#include "/media/mendyberger/USB-Card/wasi/dawn/out/Release/gen/include/dawn/webgpu.h"
-#endif
 
 #include <stddef.h>
 
