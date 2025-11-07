@@ -212,7 +212,7 @@ Status MakeMatMulPackedVec4Source(ShaderHelper& shader,
       << (nullptr != batch_dims ? "  let batchIndices = " + batch_dims->OffsetToIndices("u32(batch)") + ";\n" : "")
       << "  let globalRowStart = i32(workgroup_id.y) * " << tile_a_outer << ";\n"
       << "  let globalColStart = i32(workgroup_id.x) * " << tile_b_outer << ";\n"
-      << "  let num_tiles = (uniforms.dim_inner - 1) / tileInner + 1;\n"
+      << "  let num_tiles = (uniforms.dim_inner - 1) / u32(tileInner) + 1;\n"
       << "  var kStart = 0;\n"
       << "  var acc: array<vec4<" << data_type << ">, rowPerThread>;\n";
 
@@ -391,7 +391,7 @@ Status MakeMatMulPackedSource(ShaderHelper& shader,
 
   shader.MainFunctionBody() << " let batch = i32(global_id.z);\n"
                             << (nullptr != batch_dims ? "  let batchIndices = " + batch_dims->OffsetToIndices("u32(batch)") + ";\n" : "")
-                            << " let num_tiles = (uniforms.dim_inner - 1) / tileInner + 1;\n"
+                            << " let num_tiles = (uniforms.dim_inner - 1) / u32(tileInner) + 1;\n"
                             << " var kStart = 0;\n"
                             << " var acc: array<array<" << data_type << ", colPerThread>, rowPerThread>;\n";
 
