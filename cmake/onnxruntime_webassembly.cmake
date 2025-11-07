@@ -175,6 +175,7 @@ else()
   file(GLOB_RECURSE onnxruntime_webassembly_src CONFIGURE_DEPENDS
     # "${ONNXRUNTIME_ROOT}/wasm/api.cc" TODO:
     "${ONNXRUNTIME_ROOT}/wasm/simple.cpp"
+    "${ONNXRUNTIME_ROOT}/wasm/image_utils.cpp"
   )
 
   source_group(TREE ${REPO_ROOT} FILES ${onnxruntime_webassembly_src})
