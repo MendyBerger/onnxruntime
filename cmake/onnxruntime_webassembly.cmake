@@ -176,6 +176,7 @@ else()
     # "${ONNXRUNTIME_ROOT}/wasm/api.cc" TODO:
     "${ONNXRUNTIME_ROOT}/wasm/simple.cpp"
     "${ONNXRUNTIME_ROOT}/wasm/image_utils.cpp"
+    "${ONNXRUNTIME_ROOT}/wasm/wasi_sem_stub.cpp"
   )
 
   source_group(TREE ${REPO_ROOT} FILES ${onnxruntime_webassembly_src})
@@ -255,6 +256,23 @@ else()
   )
 
   # Memory configuration for WASI
+  # Add OpenH264 include directories  
+  set(OPENH264_ROOT "/Users/colmurph/workspaces/vasnani/FlowMark_ONNX/cpp/openh264")
+  set(OPENH264_LIB "${OPENH264_ROOT}/libopenh264..a")
+  set(MINIMP4_INCLUDE "/Users/colmurph/workspaces/vasnani/FlowMark_ONNX/cpp")
+  
+  message(STATUS "OpenH264 library: ${OPENH264_LIB}")
+  message(STATUS "OpenH264 includes: ${OPENH264_ROOT}/codec/api/wels")
+  
+  # Add includes for OpenH264 and minimp4
+  target_include_directories(onnxruntime_webassembly PRIVATE
+    "${OPENH264_ROOT}/codec/api/wels"
+    "${MINIMP4_INCLUDE}"
+  )
+  
+  # Link OpenH264 static library
+  target_link_libraries(onnxruntime_webassembly PRIVATE "${OPENH264_LIB}")
+  
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_link_options(onnxruntime_webassembly PRIVATE
       -Wl,--initial-memory=67108864  # 64MB initial
