@@ -52,7 +52,7 @@ TEST(KernelTypeStrResolverUtilsTest, VerifyLayoutTransformationRequiredOpsResolv
 // run this test manually to output a hard-coded byte array.
 // update AddLayoutTransformationRequiredOpsToKernelTypeStrResolver in
 // onnxruntime/core/framework/kernel_type_str_resolver_utils.cc
-TEST(KernelTypeStrResolverUtilsTest, DISABLED_PrintExpectedLayoutTransformationRequiredOpsResolverByteArray) {
+TEST(KernelTypeStrResolverUtilsTest, PrintExpectedLayoutTransformationRequiredOpsResolverByteArray) {
 #if defined(DISABLE_CONTRIB_OPS)
   FAIL() << "Contrib ops must be enabled.";
 #else   // defined(DISABLE_CONTRIB_OPS)

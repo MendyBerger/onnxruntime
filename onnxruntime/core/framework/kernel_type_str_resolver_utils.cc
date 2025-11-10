@@ -10,6 +10,9 @@
 #include "core/common/common.h"
 #include "core/flatbuffers/schema/ort.fbs.h"
 #include "core/optimizer/layout_transformation/layout_transformation_potentially_added_ops.h"
+#if !defined(ORT_MINIMAL_BUILD)
+#include "core/graph/schema_registry.h"
+#endif  // !defined(ORT_MINIMAL_BUILD)
 
 namespace onnxruntime::kernel_type_str_resolver_utils {
 
@@ -378,6 +381,50 @@ Status AddLayoutTransformationRequiredOpsToKernelTypeStrResolver(KernelTypeStrRe
 
   ORT_RETURN_IF_ERROR(LoadKernelTypeStrResolverFromBuffer(resolver_with_required_ops,
                                                           kLayoutTransformationRequiredOpsKernelTypeStrResolverBytes));
+  
+  // Manually register NHWC Conv operator if not already in the byte array
+  // This is a workaround until the byte array is regenerated with the updated kLayoutTransformationPotentiallyAddedOps
+  // TODO: Regenerate kLayoutTransformationRequiredOpsKernelTypeStrResolverBytes by running:
+  //   KernelTypeStrResolverUtilsTest.PrintExpectedLayoutTransformationRequiredOpsResolverByteArray
+  OpIdentifier nhwc_conv_op_id{kMSInternalNHWCDomain, "Conv", 1};
+  const auto& op_map = resolver_with_required_ops.GetOpKernelTypeStrMap();
+  if (op_map.find(nhwc_conv_op_id) == op_map.end()) {
+    // Try to copy type info from regular Conv operator (ai.onnx:Conv:1) if available
+    OpIdentifier regular_conv_op_id{kOnnxDomain, "Conv", 1};
+    const auto regular_conv_it = op_map.find(regular_conv_op_id);
+    if (regular_conv_it != op_map.end()) {
+      // Copy the type information from regular Conv to NHWC Conv
+      // NHWC Conv has the same type constraints as regular Conv
+      KernelTypeStrToArgsMap nhwc_conv_type_map = regular_conv_it->second;
+      resolver_with_required_ops.AddOpKernelTypeStrMap(nhwc_conv_op_id, std::move(nhwc_conv_type_map));
+    } else {
+      // If regular Conv is also not available, manually construct the type map entry
+      // Conv operators typically use type constraint "T" for input 0 (tensor)
+      // Based on ONNX Conv schema: inputs are X (T), W (T), B (T, optional), outputs are Y (T)
+      KernelTypeStrToArgsMap nhwc_conv_type_map;
+      // Type constraint "T" maps to input 0 (X), input 1 (W), input 2 (B, optional), and output 0 (Y)
+      nhwc_conv_type_map["T"] = InlinedVector<ArgTypeAndIndex>{
+          ArgTypeAndIndex{ArgType::kInput, 0},   // X
+          ArgTypeAndIndex{ArgType::kInput, 1},   // W
+          ArgTypeAndIndex{ArgType::kInput, 2},   // B (optional)
+          ArgTypeAndIndex{ArgType::kOutput, 0}   // Y
+      };
+      resolver_with_required_ops.AddOpKernelTypeStrMap(nhwc_conv_op_id, std::move(nhwc_conv_type_map));
+      
+      // Also try to register from schema if available (non-minimal builds only)
+#if !defined(ORT_MINIMAL_BUILD)
+      KernelTypeStrResolver nhwc_conv_resolver;
+      const auto schema_registry = SchemaRegistryManager{};
+      const auto* op_schema = schema_registry.GetSchema("Conv", 1, std::string{kMSInternalNHWCDomain});
+      if (op_schema != nullptr) {
+        ORT_RETURN_IF_ERROR(nhwc_conv_resolver.RegisterOpSchema(*op_schema));
+        // Merge the NHWC Conv resolver into resolver_with_required_ops (will overwrite manual entry if different)
+        resolver_with_required_ops.Merge(std::move(nhwc_conv_resolver));
+      }
+#endif  // !defined(ORT_MINIMAL_BUILD)
+    }
+  }
+  
   kernel_type_str_resolver.Merge(std::move(resolver_with_required_ops));
   return Status::OK();
 }

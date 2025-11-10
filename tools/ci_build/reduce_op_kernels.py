@@ -201,12 +201,13 @@ def _generate_provider_registrations(
     ort_root: Path,
     build_dir: Path,
     use_cuda: bool,
+    use_webgpu: bool,
     required_ops: dict | None,
     op_type_impl_filter: OpTypeImplFilterInterface | None,
 ):
     """Generate provider registration files."""
     kernel_registration_files = [
-        Path(f) for f in op_registration_utils.get_kernel_registration_files(str(ort_root), use_cuda)
+        Path(f) for f in op_registration_utils.get_kernel_registration_files(str(ort_root), use_cuda, use_webgpu)
     ]
 
     for kernel_registration_file in kernel_registration_files:
@@ -280,6 +281,7 @@ def reduce_ops(
     build_dir: str,
     enable_type_reduction: bool,
     use_cuda: bool,
+    use_webgpu: bool,
     is_extended_minimal_build_or_higher: bool,
 ):
     """
@@ -288,6 +290,7 @@ def reduce_ops(
     :param build_dir: Path to the build directory. The op reduction files will be generated under the build directory.
     :param enable_type_reduction: Whether per operator type reduction is enabled
     :param use_cuda: Whether to reduce op kernels for the CUDA provider
+    :param use_webgpu: Whether to reduce op kernels for the WebGPU provider
     :param is_extended_minimal_build_or_higher: Whether this build has at least the features of an extended minimal
                                                 build enabled.
     """
@@ -304,7 +307,7 @@ def reduce_ops(
         log.info(f"Deleting existing op reduction file root directory: {op_reduction_root}")
         shutil.rmtree(op_reduction_root)
 
-    _generate_provider_registrations(ORT_ROOT, build_dir_path, use_cuda, required_ops, op_type_impl_filter)
+    _generate_provider_registrations(ORT_ROOT, build_dir_path, use_cuda, use_webgpu, required_ops, op_type_impl_filter)
 
     type_control_cpp_code = op_type_impl_filter.get_cpp_entries() if op_type_impl_filter is not None else []
     _generate_type_control_overrides(ORT_ROOT, build_dir_path, type_control_cpp_code)
@@ -344,6 +347,8 @@ if __name__ == "__main__":
 
     parser.add_argument("--use_cuda", action="store_true", help="Whether to reduce op kernels for the CUDA provider.")
 
+    parser.add_argument("--use_webgpu", action="store_true", help="Whether to reduce op kernels for the WebGPU provider.")
+
     args = parser.parse_args()
 
     reduce_ops(
@@ -351,5 +356,6 @@ if __name__ == "__main__":
         build_dir=args.cmake_build_dir,
         enable_type_reduction=args.enable_type_reduction,
         use_cuda=args.use_cuda,
+        use_webgpu=args.use_webgpu,
         is_extended_minimal_build_or_higher=args.is_extended_minimal_build_or_higher,
     )

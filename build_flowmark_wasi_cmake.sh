@@ -23,23 +23,57 @@ echo "Operators Config: $OPERATORS_CONFIG"
 echo "Build Directory: $BUILD_DIR"
 echo ""
 
-# Create build directory
+# Create build directory (clean op_reduction.generated to ensure fresh operator registration)
 mkdir -p "$BUILD_DIR"
+if [ -d "$BUILD_DIR/op_reduction.generated" ]; then
+    echo "Cleaning previous operator registration files..."
+    rm -rf "$BUILD_DIR/op_reduction.generated"
+fi
 
 # Step 1: Run reduce_op_kernels.py
 echo "Step 1: Generating operator registration files..."
+echo "Using config file: $OPERATORS_CONFIG"
 python3.11 "$SCRIPT_DIR/tools/ci_build/reduce_op_kernels.py" \
     "$OPERATORS_CONFIG" \
     --cmake_build_dir "$BUILD_DIR" \
     --enable_type_reduction \
+    --use_webgpu \
     --is_extended_minimal_build_or_higher
 
 echo "✓ Operator registration files generated"
+
+# Verify NHWC Conv operator was included
+if [ -d "$BUILD_DIR/op_reduction.generated" ]; then
+    echo ""
+    echo "Verifying NHWC Conv operator inclusion..."
+    if grep -r "com.ms.internal.nhwc.*Conv\|kMSInternalNHWCDomain.*Conv" "$BUILD_DIR/op_reduction.generated" > /dev/null 2>&1; then
+        echo "✓ NHWC Conv operator found in generated files"
+    else
+        echo "⚠️  WARNING: NHWC Conv operator not found in generated files"
+        echo "   Checking WebGPU provider files..."
+        if [ -f "$BUILD_DIR/op_reduction.generated/onnxruntime/core/providers/webgpu/webgpu_execution_provider.cc" ]; then
+            if grep -q "kMSInternalNHWCDomain.*Conv" "$BUILD_DIR/op_reduction.generated/onnxruntime/core/providers/webgpu/webgpu_execution_provider.cc" 2>/dev/null; then
+                echo "✓ NHWC Conv operator found in WebGPU provider file"
+            else
+                echo "⚠️  WARNING: NHWC Conv operator not found in WebGPU provider file"
+            fi
+        else
+            echo "⚠️  WARNING: WebGPU provider file not found in generated files"
+        fi
+    fi
+fi
 echo ""
 
 # Step 2: Run CMake configure
 echo "Step 2: Configuring CMake..."
 cd "$BUILD_DIR"
+
+# Clean CMake cache to ensure fresh configuration
+if [ -f "$BUILD_DIR/CMakeCache.txt" ]; then
+    echo "Cleaning CMake cache..."
+    rm -f "$BUILD_DIR/CMakeCache.txt"
+    rm -rf "$BUILD_DIR/CMakeFiles"
+fi
 
 cmake "$SCRIPT_DIR/cmake" \
     -DCMAKE_TOOLCHAIN_FILE="$SCRIPT_DIR/cmake/wasi-sdk.cmake" \

@@ -456,6 +456,13 @@ int main(int argc, char* argv[]) {
     std::cout << "\n⚙️  Initializing ONNX Runtime..." << std::endl;
     Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "FlowMarkWASM");
     Ort::SessionOptions session_options;
+    
+    // Enable WebGPU execution provider
+    std::cout << "   Enabling WebGPU execution provider..." << std::endl;
+    std::unordered_map<std::string, std::string> webgpu_options;
+    // WebGPU options for WASI - may need device selection or other config
+    session_options.AppendExecutionProvider("WebGPU", webgpu_options);
+    std::cout << "   ✅ WebGPU provider configured" << std::endl;
 
     Ort::Session watermark_session(env, watermark_model, session_options);
     Ort::Session mask_session(env, mask_model, session_options);

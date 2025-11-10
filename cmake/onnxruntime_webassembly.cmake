@@ -112,7 +112,7 @@ add_compile_definitions(
 # Override re2 compiler options to remove -pthread (not supported in WASI)
 set_property(TARGET re2 PROPERTY COMPILE_OPTIONS )
 
-if (NOT onnxruntime_USE_VCPKG)
+if (NOT onnxruntime_USE_VCPKG AND TARGET onnx)
   target_compile_options(onnx PRIVATE -Wno-unused-parameter -Wno-unused-variable)
 endif()
 
