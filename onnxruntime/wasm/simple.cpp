@@ -810,18 +810,19 @@ int main(int argc, char* argv[]) {
                 all_nals.insert(all_nals.end(), layer_info->pBsBuf, layer_info->pBsBuf + layer_total);
             }
             
-            // minimp4's mp4_h26x_write_nal expects the timestamp of when the NEXT sample starts
-            // For 30fps video: frame N ends and frame N+1 starts at (N+1) * 3000 in 90kHz units
-            unsigned next_frame_timestamp_90k = (frames_processed + 1) * 3000;
+            // minimp4's mp4_h26x_write_nal expects a timestamp parameter, but internally
+            // it passes this value as duration to MP4E_put_sample.
+            // For 30fps video: each frame duration is 1/30 second = 3000 units in 90kHz
+            unsigned frame_duration_90k = 3000;
             
             if (frames_processed < 3) {
                 std::cout << "       [TIMESTAMP DEBUG] Encoded frame " << frames_processed 
                           << " from input sample " << (sample_count - 1)
-                          << ", next_ts=" << next_frame_timestamp_90k 
-                          << " (" << (next_frame_timestamp_90k / 90000.0) << "s)" << std::endl;
+                          << ", duration=" << frame_duration_90k 
+                          << " (" << (frame_duration_90k / 90000.0) << "s)" << std::endl;
             }
             
-            int write_result = mp4_h26x_write_nal(&mp4wr, all_nals.data(), all_nals.size(), next_frame_timestamp_90k);
+            int write_result = mp4_h26x_write_nal(&mp4wr, all_nals.data(), all_nals.size(), frame_duration_90k);
             if (frames_processed < 3) {
                 std::cout << "       [WRITE DEBUG] mp4_h26x_write_nal result=" << write_result << std::endl;
             }
