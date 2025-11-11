@@ -21,7 +21,7 @@ Status ComputeChannelScaleShiftProgram::GenerateShaderCode(ShaderHelper& shader)
   shader.AdditionalImplementation() << "alias f32_val_t = " << (components_ == 4 ? "vec4<f32>" : (components_ == 2 ? "vec2<f32>" : "f32")) << ";\n"
                                     << "var<workgroup> workgroup_shared_sum : array<f32_val_t, " << workgroup_size_ << ">;\n"
                                     << "var<workgroup> workgroup_shared_squared_sum : array<f32_val_t, " << workgroup_size_ << ">;\n"
-                                    << "const workgroup_size = " << workgroup_size_ << ";\n";
+                                    << "const workgroup_size: u32 = " << workgroup_size_ << "u;\n";
 
   shader.MainFunctionBody() << "  let batch = workgroup_idx / uniforms.x_shape[1];\n"
                             << "  let channel = workgroup_idx % uniforms.x_shape[1];\n"
@@ -38,10 +38,10 @@ Status ComputeChannelScaleShiftProgram::GenerateShaderCode(ShaderHelper& shader)
                             << "  workgroup_shared_sum[local_idx] = sum;\n"
                             << "  workgroup_shared_squared_sum[local_idx] = squared_sum;\n"
                             << "  workgroupBarrier();\n"
-                            << "  for (var currSize = workgroup_size >> 1; currSize > 0; currSize = currSize >> 1) {\n"
-                            << "    if (local_idx < u32(currSize)) {\n"
-                            << "      workgroup_shared_sum[local_idx] = workgroup_shared_sum[local_idx] + workgroup_shared_sum[local_idx + u32(currSize)];\n"
-                            << "      workgroup_shared_squared_sum[local_idx] = workgroup_shared_squared_sum[local_idx] + workgroup_shared_squared_sum[local_idx + u32(currSize)];\n"
+                            << "  for (var currSize: u32 = workgroup_size / 2u; currSize > 0u; currSize = currSize / 2u) {\n"
+                            << "    if (local_idx < currSize) {\n"
+                            << "      workgroup_shared_sum[local_idx] = workgroup_shared_sum[local_idx] + workgroup_shared_sum[local_idx + currSize];\n"
+                            << "      workgroup_shared_squared_sum[local_idx] = workgroup_shared_squared_sum[local_idx] + workgroup_shared_squared_sum[local_idx + currSize];\n"
                             << "    }\n"
                             << "    workgroupBarrier();\n"
                             << "  }\n"

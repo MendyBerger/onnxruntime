@@ -18,4 +18,5 @@ if __name__ == "__main__":
         save_optimized_onnx_model=args.save_optimized_onnx_model,
         allow_conversion_failures=args.allow_conversion_failures,
         enable_type_reduction=args.enable_type_reduction,
+        execution_provider=getattr(args, "execution_provider", "CPUExecutionProvider"),
     )
