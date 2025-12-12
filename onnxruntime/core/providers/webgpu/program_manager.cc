@@ -22,7 +22,11 @@ ProgramArtifact::ProgramArtifact(const ProgramBase& program, wgpu::ComputePipeli
 Status ProgramManager::NormalizeDispatchGroupSize(uint32_t& x, uint32_t& y, uint32_t& z) const {
   ORT_RETURN_IF(x == 0 || y == 0 || z == 0, "Invalid dispatch group size (", x, ", ", y, ", ", z, ")");
 
-  auto limit_per_dimension = limits_.maxComputeWorkgroupsPerDimension;
+  // WebGPU spec limit: maxComputeWorkgroupsPerDimension is 65535
+  // Clamp to ensure we never exceed this limit
+  constexpr uint32_t kWebGPUMaxWorkgroupsPerDimension = 65535u;
+  auto limit_per_dimension = std::min(limits_.maxComputeWorkgroupsPerDimension, kWebGPUMaxWorkgroupsPerDimension);
+
   if (x > limit_per_dimension || y > limit_per_dimension || z > limit_per_dimension) {
     double size = static_cast<double>(x) * static_cast<double>(y) * static_cast<double>(z);
     double dispatch_avg = std::ceil(std::sqrt(size));
@@ -35,6 +39,12 @@ Status ProgramManager::NormalizeDispatchGroupSize(uint32_t& x, uint32_t& y, uint
       z = 1;
     }
   }
+
+  // Final clamp to ensure we never exceed WebGPU limits
+  x = std::min(x, kWebGPUMaxWorkgroupsPerDimension);
+  y = std::min(y, kWebGPUMaxWorkgroupsPerDimension);
+  z = std::min(z, kWebGPUMaxWorkgroupsPerDimension);
+
   return Status::OK();
 }
 

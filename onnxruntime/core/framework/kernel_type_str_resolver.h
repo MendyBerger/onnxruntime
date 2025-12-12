@@ -106,6 +106,16 @@ class KernelTypeStrResolver final : public IKernelTypeStrResolver {
    */
   void Merge(KernelTypeStrResolver src);
 
+  /**
+   * Manually adds a kernel type string mapping for an operator.
+   * This is useful for adding operators that aren't in the pre-computed byte array.
+   * @param op_id The operator identifier.
+   * @param kernel_type_str_map The kernel type string to arguments mapping.
+   */
+  void AddOpKernelTypeStrMap(OpIdentifier op_id, KernelTypeStrToArgsMap kernel_type_str_map) {
+    op_kernel_type_str_map_.try_emplace(std::move(op_id), std::move(kernel_type_str_map));
+  }
+
   const OpKernelTypeStrMap& GetOpKernelTypeStrMap() const { return op_kernel_type_str_map_; }
 
  private:

@@ -192,23 +192,38 @@ Status WebGpuContext::Run(ComputeContext& context, ProgramBase& program) {
   }
 
   if (ValidationMode() >= ValidationMode::Basic) {
-    ORT_ENFORCE(std::all_of(inputs.begin(), inputs.end(), [](const ProgramInput& input) {
-                  const auto* tensor = input.tensor;
-                  return tensor != nullptr &&
-                         tensor->Location().mem_type == OrtMemType::OrtMemTypeDefault &&
-                         tensor->Location().device.Type() == OrtDevice::GPU &&
-                         !strcmp(tensor->Location().name.c_str(), WEBGPU_BUFFER);
-                }),
-                "All inputs must be tensors on WebGPU buffers.");
-
-    ORT_ENFORCE(std::all_of(outputs.begin(), outputs.end(), [](const ProgramOutput& output) {
-                  const auto* tensor = output.tensor;
-                  return tensor != nullptr &&
-                         tensor->Location().mem_type == OrtMemType::OrtMemTypeDefault &&
-                         tensor->Location().device.Type() == OrtDevice::GPU &&
-                         !strcmp(tensor->Location().name.c_str(), WEBGPU_BUFFER);
-                }),
-                "All outputs must be tensors on WebGPU buffers.");
+    // Check inputs
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      const auto* tensor = inputs[i].tensor;
+      if (tensor == nullptr) {
+        return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "Input tensor[", i, "] is null.");
+      }
+      if (tensor->Location().device.Type() != OrtDevice::GPU ||
+          strcmp(tensor->Location().name.c_str(), WEBGPU_BUFFER) != 0) {
+        return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL,
+                              "Input tensor[", i, "] is not on WebGPU buffer. "
+                              "Device type: ", tensor->Location().device.Type(),
+                              ", Location name: ", tensor->Location().name.c_str(),
+                              ". This usually means CPU->GPU data transfer is not working. "
+                              "Ensure MemcpyFromHost nodes are inserted in the graph.");
+      }
+    }
+    
+    // Check outputs
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      const auto* tensor = outputs[i].tensor;
+      if (tensor == nullptr) {
+        return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "Output tensor[", i, "] is null.");
+      }
+      if (tensor->Location().device.Type() != OrtDevice::GPU ||
+          strcmp(tensor->Location().name.c_str(), WEBGPU_BUFFER) != 0) {
+        return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL,
+                              "Output tensor[", i, "] is not on WebGPU buffer. "
+                              "Device type: ", tensor->Location().device.Type(),
+                              ", Location name: ", tensor->Location().name.c_str(),
+                              ". This usually means GPU buffer allocation failed.");
+      }
+    }
   }
 
   const ProgramMetadata& metadata = program.Metadata();

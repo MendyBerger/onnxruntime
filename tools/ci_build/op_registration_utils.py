@@ -50,11 +50,12 @@ def map_ort_constant_to_domain(ort_constant_name: str, allow_unknown_constant: b
     return None
 
 
-def get_kernel_registration_files(ort_root=None, include_cuda=False):
+def get_kernel_registration_files(ort_root=None, include_cuda=False, include_webgpu=False):
     """
-    Return paths to files containing kernel registrations for CPU and CUDA providers.
+    Return paths to files containing kernel registrations for CPU, CUDA, and WebGPU providers.
     :param ort_root: ORT repository root directory. Inferred from the location of this script if not provided.
     :param include_cuda: Include the CUDA registrations in the list of files.
+    :param include_webgpu: Include the WebGPU registrations in the list of files.
     :return: list[str] containing the kernel registration filenames.
     """
 
@@ -74,6 +75,13 @@ def get_kernel_registration_files(ort_root=None, include_cuda=False):
         provider_paths.append(provider_path.format(ep="cuda"))
         provider_paths.append(contrib_provider_path.format(ep="cuda"))
         provider_paths.append(training_provider_path.format(ep="cuda"))
+
+    if include_webgpu:
+        provider_paths.append(provider_path.format(ep="webgpu"))
+        # WebGPU doesn't have contrib or training kernels yet, but include if they exist
+        webgpu_contrib = contrib_provider_path.format(ep="webgpu")
+        if os.path.exists(webgpu_contrib):
+            provider_paths.append(webgpu_contrib)
 
     provider_paths = [os.path.abspath(p) for p in provider_paths]
 

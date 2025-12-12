@@ -40,12 +40,12 @@ WEBGPU_CONCAT_KERNEL(13)
 
 void AppendCalculateInputIndexFunction(std::ostream& os, size_t input_count) {
   os << "fn calculate_input_index(global_idx: u32) -> u32 {\n"
-     << "  for (var i = 1u; i < " << input_count << "; i = i + 1u) {\n"
+     << "  for (var i = 1u; i < " << input_count << "u; i = i + 1u) {\n"
      << "    if (global_idx < " << GetElementAt("uniforms.offsets", "i", input_count) << ") {\n"
-     << "      return i - 1;\n"
+     << "      return i - 1u;\n"
      << "    }\n"
      << "  }\n"
-     << "  return " << input_count - 1 << ";\n"
+     << "  return " << input_count - 1 << "u;\n"
      << "}\n";
 }
 

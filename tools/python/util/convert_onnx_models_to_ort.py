@@ -104,7 +104,46 @@ def _convert(
     if len(models) == 0:
         raise ValueError(f"No model files were found in '{model_path_or_dir}'")
 
-    providers = ["CPUExecutionProvider"]
+    # Determine execution providers - support WebGPU for proper graph partitioning
+    # When WebGPU is used, ONNX Runtime will insert MemcpyFromHost nodes for CPU->GPU transfers
+    providers = session_options_config_entries.get("execution_providers", "CPUExecutionProvider").split(",")
+    providers = [p.strip() for p in providers if p.strip()]
+
+    # Verify requested providers are available - fail if WebGPU is required but not available
+    available_providers = ort.get_available_providers()
+    filtered_providers = []
+    webgpu_required = "WebGpuExecutionProvider" in providers
+
+    for provider in providers:
+        if provider in available_providers:
+            filtered_providers.append(provider)
+        else:
+            if provider == "WebGpuExecutionProvider":
+                raise RuntimeError(
+                    f"WebGpuExecutionProvider is required but not available. "
+                    f"Available providers: {available_providers}. "
+                    f"Please install ONNX Runtime with WebGPU support."
+                )
+            else:
+                print(f"Warning: Provider '{provider}' not available, skipping. Available: {available_providers}")
+
+    if webgpu_required and "WebGpuExecutionProvider" not in filtered_providers:
+        raise RuntimeError(
+            f"WebGpuExecutionProvider is required but was filtered out. "
+            f"Available providers: {available_providers}. "
+            f"Please install ONNX Runtime with WebGPU support."
+        )
+
+    if not filtered_providers:
+        raise RuntimeError(
+            f"No valid execution providers found. Requested: {providers}, "
+            f"Available: {available_providers}"
+        )
+
+    providers = filtered_providers
+    print(f"Using execution providers: {providers}")
+    if webgpu_required:
+        print("✅ WebGPU provider confirmed - graph will be partitioned with MemcpyFromHost nodes")
 
     # if the optimization level is greater than or equal to 'layout' we manually exclude the NCHWc transformer.
     # It's not applicable to ARM devices, and creates a device specific model which won't run on all hardware.
@@ -158,9 +197,17 @@ def _convert(
                 so.add_session_config_entry("optimization.minimal_build_optimizations", "save")
 
             print(f"Converting optimized ONNX model {model} to ORT format model {ort_target_path}")
-            _ = ort.InferenceSession(
+            print(f"  Using execution providers: {providers}")
+            session = ort.InferenceSession(
                 str(model), sess_options=so, providers=providers, disabled_optimizers=optimizer_filter
             )
+            # Verify which providers were actually used
+            actual_providers = session.get_providers()
+            print(f"  Active providers: {actual_providers}")
+            if "WebGpuExecutionProvider" in actual_providers:
+                print(f"  ✅ WebGPU provider active - graph will be partitioned with MemcpyFromHost nodes")
+            elif "WebGpuExecutionProvider" in providers:
+                print(f"  ⚠️  Warning: WebGPU requested but not active. Graph may not have proper CPU->GPU transfers.")
 
             converted_models.append(ort_target_path)
 
@@ -255,6 +302,17 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--execution_provider",
+        type=str,
+        default="CPUExecutionProvider",
+        help="Execution provider(s) to use when converting models. "
+        "Multiple providers can be specified separated by commas (e.g., 'WebGpuExecutionProvider,CPUExecutionProvider'). "
+        "Using WebGpuExecutionProvider ensures proper graph partitioning with MemcpyFromHost nodes for CPU->GPU transfers. "
+        "If WebGpuExecutionProvider is specified and not available, conversion will fail (no fallback). "
+        "Default: CPUExecutionProvider",
+    )
+
+    parser.add_argument(
         "model_path_or_dir",
         type=pathlib.Path,
         help="Provide path to ONNX model or directory containing ONNX model/s to convert. "
@@ -276,6 +334,7 @@ def convert_onnx_models_to_ort(
     save_optimized_onnx_model: bool = False,
     allow_conversion_failures: bool = False,
     enable_type_reduction: bool = False,
+    execution_provider: str = "CPUExecutionProvider",
 ):
     if output_dir is not None:
         if not output_dir.is_dir():
@@ -297,6 +356,9 @@ def convert_onnx_models_to_ort(
         raise FileNotFoundError(f"Unable to find custom operator library '{custom_op_library}'")
 
     session_options_config_entries = {}
+
+    # Store execution provider in config entries so _convert can access it
+    session_options_config_entries["execution_providers"] = execution_provider
 
     if target_platform is not None and target_platform == "arm":
         session_options_config_entries["session.qdqisint8allowed"] = "1"
@@ -377,4 +439,5 @@ if __name__ == "__main__":
         save_optimized_onnx_model=args.save_optimized_onnx_model,
         allow_conversion_failures=args.allow_conversion_failures,
         enable_type_reduction=args.enable_type_reduction,
+        execution_provider=getattr(args, "execution_provider", "CPUExecutionProvider"),
     )

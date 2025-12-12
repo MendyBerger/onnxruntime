@@ -67,6 +67,9 @@ inline constexpr std::array kLayoutTransformationPotentiallyAddedOps = {
     OpIdentifierWithStringViews{kMSDomain, "NhwcMaxPool", 1},
     OpIdentifierWithStringViews{kMSDomain, "QLinearConv", 1},
     OpIdentifierWithStringViews{kMSDomain, "QuantizeLinear", 1},
+    
+    // kMSInternalNHWCDomain ops (added by layout transformation)
+    OpIdentifierWithStringViews{kMSInternalNHWCDomain, "Conv", 1},
 #endif  // !defined(DISABLE_CONTRIB_OPS)
 
     // @@region_end(extended_minimal_build_required_kernels)@@
