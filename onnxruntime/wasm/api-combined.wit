@@ -1,0 +1,822 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+// WIT (WebAssembly Interface Types) definition for ONNX Runtime WASM API
+// This file combines both the high-level TypeScript-based API and the low-level C API
+// to provide a complete, coherent interface.
+
+package onnxruntime:wasm;
+
+world ort-wasm {
+  // ============================================================================
+  // Core Type Definitions
+  // ============================================================================
+
+  /// Tensor data types (matches ONNXTensorElementDataType)
+  type tensor-type = enum {
+    float32,
+    uint8,
+    int8,
+    uint16,
+    int16,
+    int32,
+    int64,
+    string,
+    bool,
+    float16,
+    float64,
+    uint32,
+    uint64,
+    uint4,
+    int4,
+  }
+
+  /// Data location for tensor storage
+  type data-location = enum {
+    none,
+    cpu,
+    cpu-pinned,
+    texture,
+    gpu-buffer,
+    ml-tensor,
+  }
+
+  /// Graph optimization level
+  type graph-optimization-level = enum {
+    disabled,
+    basic,
+    extended,
+    layout,
+    all,
+  }
+
+  /// Execution mode
+  type execution-mode = enum {
+    sequential,
+    parallel,
+  }
+
+  /// Log severity level (0-4)
+  type log-severity-level = enum {
+    verbose,  // 0
+    info,     // 1
+    warning,  // 2
+    error,    // 3
+    fatal,    // 4
+  }
+
+  /// Environment log level
+  type env-log-level = enum {
+    verbose,
+    info,
+    warning,
+    error,
+    fatal,
+  }
+
+  /// Error code (s32 from C API)
+  type error-code = s32;
+
+  // ============================================================================
+  // Low-Level Resources (C API)
+  // ============================================================================
+
+  /// Low-level session handle (from C API)
+  resource session {
+    drop: func(self: borrow<session>);
+  }
+
+  /// Low-level session options handle (from C API)
+  resource session-options {
+    drop: func(self: borrow<session-options>);
+  }
+
+  /// Low-level run options handle (from C API)
+  resource run-options {
+    drop: func(self: borrow<run-options>);
+  }
+
+  /// Low-level tensor handle (from C API)
+  resource tensor {
+    drop: func(self: borrow<tensor>);
+  }
+
+  /// Low-level IO binding handle (from C API)
+  resource io-binding {
+    drop: func(self: borrow<io-binding>);
+  }
+
+  // Training resources (when ENABLE_TRAINING_APIS is enabled)
+  resource training-checkpoint {
+    drop: func(self: borrow<training-checkpoint>);
+  }
+
+  resource training-session {
+    drop: func(self: borrow<training-session>);
+  }
+
+  // ============================================================================
+  // High-Level Resources (TypeScript API)
+  // ============================================================================
+
+  /// High-level inference session (TypeScript API)
+  /// This is the recommended interface for most users
+  resource inference-session {
+    /// Execute the model with the given feeds
+    /// @param feeds List of (name, tensor) pairs for inputs
+    /// @param options Optional run options
+    /// @returns List of (name, tensor) pairs for outputs
+    run: func(
+      self: borrow<inference-session>,
+      feeds: list<feed-entry>,
+      options: option<run-options-record>
+    ) -> result<list<output-entry>, error>;
+
+    /// Execute the model with the given feeds and fetches
+    /// @param feeds List of (name, tensor) pairs for inputs
+    /// @param fetches Optional list of (name, optional-tensor) pairs for pre-allocated outputs
+    /// @param options Optional run options
+    /// @returns List of (name, tensor) pairs for outputs
+    run-with-fetches: func(
+      self: borrow<inference-session>,
+      feeds: list<feed-entry>,
+      fetches: option<list<fetch-entry>>,
+      options: option<run-options-record>
+    ) -> result<list<output-entry>, error>;
+
+    /// Release the inference session and underlying resources
+    release: func(self: borrow<inference-session>) -> result<_, error>;
+
+    /// Start profiling
+    start-profiling: func(self: borrow<inference-session>);
+
+    /// End profiling
+    end-profiling: func(self: borrow<inference-session>) -> option<string>;
+
+    /// Get input names
+    get-input-names: func(self: borrow<inference-session>) -> list<string>;
+
+    /// Get output names
+    get-output-names: func(self: borrow<inference-session>) -> list<string>;
+
+    /// Get input metadata
+    get-input-metadata: func(self: borrow<inference-session>) -> list<value-metadata>;
+
+    /// Get output metadata
+    get-output-metadata: func(self: borrow<inference-session>) -> list<value-metadata>;
+
+    drop: func(self: borrow<inference-session>);
+  }
+
+  // ============================================================================
+  // Data Structures
+  // ============================================================================
+
+  /// Feed entry (input name and tensor)
+  record feed-entry {
+    name: string,
+    tensor: tensor,
+  }
+
+  /// Fetch entry (output name and optional pre-allocated tensor)
+  record fetch-entry {
+    name: string,
+    tensor: option<tensor>,
+  }
+
+  /// Output entry (output name and tensor)
+  record output-entry {
+    name: string,
+    tensor: tensor,
+  }
+
+  /// Tensor metadata
+  record tensor-metadata {
+    name: string,
+    type: tensor-type,
+    dims: list<u64>,  // Empty list if shape is not defined
+  }
+
+  /// Non-tensor metadata
+  record non-tensor-metadata {
+    name: string,
+  }
+
+  /// Value metadata (can be tensor or non-tensor)
+  variant value-metadata {
+    tensor(tensor-metadata),
+    non-tensor(non-tensor-metadata),
+  }
+
+  /// Type information (opaque pointer in C, represented as list<u8> in WIT)
+  type type-info = list<u8>;
+
+  /// Input/Output metadata (low-level C API format)
+  record input-output-metadata {
+    name: string,
+    type-info: type-info,
+  }
+
+  /// Tensor data structure (low-level C API format)
+  record tensor-data {
+    data-type: u64,
+    data: list<u8>,
+    dims: list<u64>,
+  }
+
+  /// Input/Output count
+  record input-output-count {
+    input-count: u64,
+    output-count: u64,
+  }
+
+  /// Provider options (key-value pairs)
+  record provider-options {
+    keys: list<string>,
+    values: list<string>,
+  }
+
+  /// Error info (low-level C API format)
+  record error-info {
+    error-code: s32,
+    error-message: string,
+  }
+
+  /// Execution provider configuration (high-level)
+  variant execution-provider-config {
+    cpu(cpu-execution-provider),
+    cuda(cuda-execution-provider),
+    webgl(webgl-execution-provider),
+    webgpu(webgpu-execution-provider),
+    webnn(webnn-execution-provider),
+    wasm(wasm-execution-provider),
+    custom(custom-execution-provider),
+  }
+
+  record cpu-execution-provider {
+    use-arena: option<bool>,
+  }
+
+  record cuda-execution-provider {
+    device-id: option<u32>,
+  }
+
+  record webgl-execution-provider {
+    // WebGL-specific options
+  }
+
+  record webgpu-execution-provider {
+    preferred-layout: option<string>,  // 'NCHW' | 'NHWC'
+  }
+
+  record webnn-execution-provider {
+    device-type: option<string>,  // 'cpu' | 'gpu' | 'npu'
+    num-threads: option<u32>,
+    power-preference: option<string>,  // 'default' | 'low-power' | 'high-performance'
+  }
+
+  record wasm-execution-provider {
+    // WASM-specific options
+  }
+
+  record custom-execution-provider {
+    name: string,
+    options: list<key-value-pair>,
+  }
+
+  record key-value-pair {
+    key: string,
+    value: string,
+  }
+
+  /// External data file description
+  record external-data-file {
+    path: string,
+    data: list<u8>,
+  }
+
+  /// Session options record (high-level structured format)
+  record session-options-record {
+    /// Execution providers
+    execution-providers: option<list<execution-provider-config>>,
+
+    /// Thread configuration
+    intra-op-num-threads: option<u32>,
+    inter-op-num-threads: option<u32>,
+
+    /// Free dimension overrides (list of (name, value) pairs)
+    free-dimension-overrides: option<list<dimension-override>>,
+
+    /// Optimization settings
+    graph-optimization-level: option<graph-optimization-level>,
+    enable-cpu-mem-arena: option<bool>,
+    enable-mem-pattern: option<bool>,
+    execution-mode: option<execution-mode>,
+
+    /// Model file options
+    optimized-model-file-path: option<string>,
+    external-data: option<list<external-data-file>>,
+
+    /// Profiling
+    enable-profiling: option<bool>,
+    profile-file-prefix: option<string>,
+
+    /// Logging
+    log-id: option<string>,
+    log-severity-level: option<log-severity-level>,
+    log-verbosity-level: option<u32>,
+
+    /// Output location preferences (for WebGL/WebGPU)
+    preferred-output-location: option<data-location>,
+
+    /// Graph capture (for WebGPU)
+    enable-graph-capture: option<bool>,
+
+    /// Extra configuration (list of key-value pairs)
+    extra: option<list<key-value-pair>>,
+  }
+
+  record dimension-override {
+    name: string,
+    value: u64,
+  }
+
+  /// Run options record (high-level structured format)
+  record run-options-record {
+    log-severity-level: option<log-severity-level>,
+    log-verbosity-level: option<u32>,
+    terminate: option<bool>,
+    tag: option<string>,
+    extra: option<list<key-value-pair>>,
+  }
+
+  /// WebAssembly flags
+  record wasm-flags {
+    num-threads: option<u32>,
+    simd: option<bool>,
+    init-timeout: option<u32>,  // milliseconds, 0 means no timeout
+  }
+
+  /// WebGL flags
+  record webgl-flags {
+    context-id: option<string>,  // 'webgl' | 'webgl2'
+    texture-cache-mode: option<string>,  // 'initializerOnly' | 'full'
+    pack: option<bool>,
+    async: option<bool>,
+  }
+
+  /// WebGPU flags
+  record webgpu-flags {
+    validate-input-content: option<bool>,
+  }
+
+  /// Environment configuration
+  record env-config {
+    log-level: option<env-log-level>,
+    debug: option<bool>,
+    trace: option<bool>,
+    wasm: option<wasm-flags>,
+    webgl: option<webgl-flags>,
+    webgpu: option<webgpu-flags>,
+  }
+
+  /// Version information
+  record version-info {
+    common: string,
+    web: option<string>,
+    node: option<string>,
+    react-native: option<string>,
+  }
+
+  /// Error information (high-level)
+  variant error {
+    initialization-error(string),
+    session-creation-error(string),
+    inference-error(string),
+    tensor-error(string),
+    invalid-argument(string),
+    runtime-error(string),
+    unknown-error(string),
+    error-code(error-code),  // Low-level error code
+  }
+
+  // ============================================================================
+  // High-Level API Functions (TypeScript-based)
+  // ============================================================================
+
+  /// Create a tensor from data (high-level)
+  /// @param type Tensor data type
+  /// @param data Tensor data as bytes (format depends on type)
+  /// @param dims Tensor dimensions
+  /// @returns Created tensor
+  create-tensor: func(
+    type: tensor-type,
+    data: list<u8>,
+    dims: list<u64>
+  ) -> result<tensor, error>;
+
+  /// Create a tensor with specific data location (high-level)
+  create-tensor-with-location: func(
+    type: tensor-type,
+    data: list<u8>,
+    dims: list<u64>,
+    location: data-location
+  ) -> result<tensor, error>;
+
+  /// Create a new inference session from a model buffer (high-level)
+  /// @param model-data ONNX model data
+  /// @param options Session options
+  /// @returns Inference session
+  create-inference-session: func(
+    model-data: list<u8>,
+    options: option<session-options-record>
+  ) -> result<inference-session, error>;
+
+  /// Create a new inference session from a model buffer segment (high-level)
+  /// @param model-data ONNX model data
+  /// @param byte-offset Starting byte offset
+  /// @param byte-length Length in bytes (0 means to end of buffer)
+  /// @param options Session options
+  /// @returns Inference session
+  create-inference-session-from-segment: func(
+    model-data: list<u8>,
+    byte-offset: u64,
+    byte-length: u64,
+    options: option<session-options-record>
+  ) -> result<inference-session, error>;
+
+  /// Set environment configuration
+  set-env: func(config: env-config) -> result<_, error>;
+
+  /// Get current environment configuration
+  get-env: func() -> env-config;
+
+  /// Get version information
+  get-version: func() -> version-info;
+
+  // ============================================================================
+  // Low-Level API Functions (C API)
+  // ============================================================================
+
+  /// Perform global initialization. Should be called only once.
+  /// @param num-threads number of total threads to use.
+  /// @param logging-level default logging level (0-4).
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  init: func(num-threads: s32, logging-level: s32) -> error-code;
+
+  /// Get the last error (low-level C API).
+  /// @returns Error info containing error code and message.
+  get-last-error: func() -> result<error-info, error-code>;
+
+  /// Create an instance of ORT session options (low-level C API).
+  /// @param graph-optimization-level disabled (0), basic (1), extended (2), layout (3), or all (99)
+  /// @param enable-cpu-mem-arena enable or disable cpu memory arena
+  /// @param enable-mem-pattern enable or disable memory pattern
+  /// @param execution-mode sequential (0) or parallel (1)
+  /// @param enable-profiling enable or disable profiling
+  /// @param profile-file-prefix file prefix for profiling data
+  /// @param log-id logger id for session output
+  /// @param log-severity-level verbose (0), info (1), warning (2), error (3), or fatal (4)
+  /// @param log-verbosity-level vlog level
+  /// @param optimized-model-filepath filepath of the optimized model to dump
+  /// @returns a session option handle, or error code
+  create-session-options: func(
+    graph-optimization-level: u64,
+    enable-cpu-mem-arena: bool,
+    enable-mem-pattern: bool,
+    execution-mode: u64,
+    enable-profiling: bool,
+    profile-file-prefix: string,
+    log-id: string,
+    log-severity-level: u64,
+    log-verbosity-level: u64,
+    optimized-model-filepath: string
+  ) -> result<session-options, error-code>;
+
+  /// Release the specified ORT session options (low-level C API).
+  release-session-options: func(session-options: session-options) -> error-code;
+
+  /// Append an execution provider for a session (low-level C API).
+  /// @param session-options handle to session options
+  /// @param name the name of the execution provider
+  /// @param provider-options provider options as key-value pairs
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  append-execution-provider: func(
+    session-options: borrow<session-options>,
+    name: string,
+    provider-options: provider-options
+  ) -> error-code;
+
+  /// Add a free dimension override for one dimension of a session's input (low-level C API).
+  add-free-dimension-override: func(
+    session-options: borrow<session-options>,
+    dim-param-name: string,
+    dim-value: s32
+  ) -> error-code;
+
+  /// Store configurations for a session (low-level C API).
+  /// @param session-options a handle to session options
+  /// @param config-key configuration key
+  /// @param config-value value for config-key
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  add-session-config-entry: func(
+    session-options: borrow<session-options>,
+    config-key: string,
+    config-value: string
+  ) -> error-code;
+
+  /// Create an instance of ORT session (low-level C API).
+  /// @param data a buffer that contains the ONNX or ORT format model
+  /// @param session-options handle to session options
+  /// @returns an ORT session handle, or error code
+  create-session: func(
+    data: list<u8>,
+    session-options: borrow<session-options>
+  ) -> result<session, error-code>;
+
+  /// Release the specified ORT session (low-level C API).
+  release-session: func(session: session) -> error-code;
+
+  /// Get model's input count and output count (low-level C API).
+  /// @param session handle of the specified session
+  /// @returns input count and output count, or error code
+  get-input-output-count: func(session: borrow<session>) -> result<input-output-count, error-code>;
+
+  /// Get the metadata of the specified input or output of the model (low-level C API).
+  /// @param session handle of the specified session
+  /// @param index the input index or output index. index should be in range [0, input_count + output_count).
+  ///              if the index is in range [0, input_count), it's an input index. otherwise, it's an output index.
+  /// @returns metadata containing name and type info, or error code
+  get-input-output-metadata: func(
+    session: borrow<session>,
+    index: u64
+  ) -> result<input-output-metadata, error-code>;
+
+  /// Create an instance of ORT tensor (low-level C API).
+  /// @param data-type data type defined in enum ONNXTensorElementDataType (use tensor-type enum values as s32)
+  /// @param data for numeric tensor: the tensor data buffer. for string tensor: a C-Style null terminated string array.
+  /// @param dims array of dimensions
+  /// @param data-location specify the memory location of the tensor data. 0 for CPU, 1 for GPU buffer.
+  /// @returns a tensor handle, or error code
+  create-tensor-low-level: func(
+    data-type: s32,
+    data: list<u8>,
+    dims: list<u64>,
+    data-location: s32
+  ) -> result<tensor, error-code>;
+
+  /// Release the specified tensor (low-level C API).
+  release-tensor: func(tensor: tensor) -> error-code;
+
+  /// Get type, shape info and data of the specified tensor (low-level C API).
+  /// @param tensor handle of the tensor
+  /// @returns tensor data containing type, data, and dimensions, or error code
+  get-tensor-data: func(tensor: borrow<tensor>) -> result<tensor-data, error-code>;
+
+  /// Create an instance of ORT run options (low-level C API).
+  /// @param log-severity-level verbose (0), info (1), warning (2), error (3), or fatal (4)
+  /// @param log-verbosity-level vlog level
+  /// @param terminate if true, all incomplete run calls will exit as soon as possible
+  /// @param tag tag for this run
+  /// @returns a run option handle
+  create-run-options: func(
+    log-severity-level: u64,
+    log-verbosity-level: u64,
+    terminate: bool,
+    tag: string
+  ) -> run-options;
+
+  /// Release the specified ORT run options (low-level C API).
+  release-run-options: func(run-options: run-options) -> error-code;
+
+  /// Set a single run configuration entry (low-level C API).
+  /// @param run-options a handle to run options
+  /// @param config-key configuration key
+  /// @param config-value value for config-key
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  add-run-config-entry: func(
+    run-options: borrow<run-options>,
+    config-key: string,
+    config-value: string
+  ) -> error-code;
+
+  /// Create an instance of ORT IO binding (low-level C API).
+  create-binding: func(session: borrow<session>) -> result<io-binding, error-code>;
+
+  /// Release the specified ORT IO binding (low-level C API).
+  release-binding: func(io-binding: io-binding) -> error-code;
+
+  /// Bind an input tensor to the IO binding instance (low-level C API).
+  /// @param io-binding handle of the IO binding
+  /// @param name name of the input
+  /// @param input handle of the input tensor
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  bind-input: func(
+    io-binding: borrow<io-binding>,
+    name: string,
+    input: borrow<tensor>
+  ) -> error-code;
+
+  /// Bind an output tensor or location to the IO binding instance (low-level C API).
+  /// @param io-binding handle of the IO binding
+  /// @param name name of the output
+  /// @param output handle of the output tensor. null for output location binding.
+  /// @param output-location specify the memory location of the output tensor data.
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  bind-output: func(
+    io-binding: borrow<io-binding>,
+    name: string,
+    output: option<borrow<tensor>>,
+    output-location: s32
+  ) -> error-code;
+
+  /// Clear all bound outputs (low-level C API).
+  clear-bound-outputs: func(io-binding: borrow<io-binding>) -> error-code;
+
+  /// Inference the model using IO binding (low-level C API).
+  /// @param session handle of the specified session
+  /// @param io-binding handle of the IO binding
+  /// @param output-count number of outputs expected
+  /// @param run-options handle of the run options
+  /// @returns array of output tensor handles, or error code
+  run-with-binding: func(
+    session: borrow<session>,
+    io-binding: borrow<io-binding>,
+    output-count: u64,
+    run-options: option<borrow<run-options>>
+  ) -> result<list<tensor>, error-code>;
+
+  /// Inference the model (low-level C API).
+  /// @param session handle of the specified session
+  /// @param input-names array of input names
+  /// @param inputs array of input tensor handles
+  /// @param output-names array of output names
+  /// @param output-count number of outputs expected
+  /// @param run-options handle of the run options
+  /// @returns array of output tensor handles, or error code
+  run: func(
+    session: borrow<session>,
+    input-names: list<string>,
+    inputs: list<borrow<tensor>>,
+    output-names: list<string>,
+    output-count: u64,
+    run-options: option<borrow<run-options>>
+  ) -> result<list<tensor>, error-code>;
+
+  /// End profiling (low-level C API).
+  /// @param session handle of the specified session
+  /// @returns a string containing the profile filename, or null if profiling is not enabled.
+  end-profiling: func(session: borrow<session>) -> option<string>;
+
+  /// Free the specified buffer (low-level C API).
+  /// Note: In WIT, memory management is typically handled automatically, but this function
+  /// is provided for compatibility with the C API.
+  free: func(ptr: list<u8>) -> error-code;
+
+  // ============================================================================
+  // WebGPU API (when USE_WEBGPU is enabled)
+  // ============================================================================
+
+  /// Get the GPU Device by device ID (low-level C API).
+  /// This function is only available after the GPU Device is initialized in WebGpuContextFactory.
+  /// @returns a WGPUDevice handle (represented as u64 in WIT).
+  /// Note: WGPUDevice is an opaque handle type, represented as u64 for WIT compatibility.
+  get-webgpu-device: func(device-id: s32) -> u64;
+
+  // ============================================================================
+  // Training API (when ENABLE_TRAINING_APIS is enabled)
+  // ============================================================================
+
+  /// Load the checkpoint for training (low-level C API).
+  /// @param checkpoint-data buffer containing the CheckpointState
+  /// @return training checkpoint handle, or error code
+  training-load-checkpoint: func(
+    checkpoint-data: list<u8>
+  ) -> result<training-checkpoint, error-code>;
+
+  /// Release the specified ORT training checkpoint state (low-level C API).
+  training-release-checkpoint: func(
+    training-checkpoint: training-checkpoint
+  ) -> error-code;
+
+  /// Creates an instance of a training session (low-level C API).
+  /// @param options Session options that the user can customize for this training session
+  /// @param training-checkpoint Training states that the training session uses as a starting point
+  /// @param train-model buffer containing the ONNX training model
+  /// @param eval-model buffer containing the ONNX evaluation model
+  /// @param optimizer-model buffer containing the ONNX optimizer model
+  /// @return a handle of the ORT training session, or error code
+  training-create-session: func(
+    options: borrow<session-options>,
+    training-checkpoint: borrow<training-checkpoint>,
+    train-model: list<u8>,
+    eval-model: list<u8>,
+    optimizer-model: list<u8>
+  ) -> result<training-session, error-code>;
+
+  /// Release the specified ORT training session (low-level C API).
+  training-release-session: func(
+    training-session: training-session
+  ) -> error-code;
+
+  /// Resets the gradients of all trainable parameters to zero (low-level C API).
+  /// @param training-session handle of the training session
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  training-lazy-reset-grad: func(
+    training-session: borrow<training-session>
+  ) -> error-code;
+
+  /// Run a single training step (low-level C API).
+  /// @param training-session session handle of the specified session
+  /// @param inputs user inputs to the training model
+  /// @param output-count number of user outputs expected from this train step
+  /// @param run-options handle of the run options
+  /// @returns user outputs computed by train step, or error code
+  training-run-train-step: func(
+    training-session: borrow<training-session>,
+    inputs: list<borrow<tensor>>,
+    output-count: u64,
+    run-options: option<borrow<run-options>>
+  ) -> result<list<tensor>, error-code>;
+
+  /// Performs weight updates for the trainable parameters (low-level C API).
+  /// @param training-session handle of the training session
+  /// @param run-options optional parameter of run options for this training step
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  training-optimizer-step: func(
+    training-session: borrow<training-session>,
+    run-options: option<borrow<run-options>>
+  ) -> error-code;
+
+  /// Computes outputs for the eval model (low-level C API).
+  /// @param training-session handle of the training session
+  /// @param inputs the user inputs to the eval model
+  /// @param output-count number of user outputs expected from this eval step
+  /// @param run-options run options for this eval step
+  /// @returns user outputs computed by the eval step, or error code
+  training-eval-step: func(
+    training-session: borrow<training-session>,
+    inputs: list<borrow<tensor>>,
+    output-count: u64,
+    run-options: option<borrow<run-options>>
+  ) -> result<list<tensor>, error-code>;
+
+  /// Retrieves the size of all parameters for the training state (low-level C API).
+  /// @param training-session handle of the training session
+  /// @param trainable-only skips non-trainable parameters when true
+  /// @returns parameter size, or error code
+  training-get-parameters-size: func(
+    training-session: borrow<training-session>,
+    trainable-only: bool
+  ) -> result<u64, error-code>;
+
+  /// Copy all parameters to a contiguous buffer (low-level C API).
+  /// @param training-session handle of the training session
+  /// @param parameters-buffer pre-allocated tensor buffer to copy onto
+  /// @param parameter-count number of parameters expected in the parameters-buffer
+  /// @param trainable-only whether to skip non-trainable parameters
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  training-copy-parameters-to-buffer: func(
+    training-session: borrow<training-session>,
+    parameters-buffer: borrow<tensor>,
+    parameter-count: u64,
+    trainable-only: bool
+  ) -> error-code;
+
+  /// Copy parameters values from given contiguous buffer (low-level C API).
+  /// @param training-session handle of the training session
+  /// @param parameters-buffer tensor buffer to copy from
+  /// @param parameter-count number of parameters expected in the parameters-buffer
+  /// @param trainable-only whether to skip non-trainable parameters
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  training-copy-parameters-from-buffer: func(
+    training-session: borrow<training-session>,
+    parameters-buffer: borrow<tensor>,
+    parameter-count: u64,
+    trainable-only: bool
+  ) -> error-code;
+
+  /// Gets the input count and output count of the training or eval model (low-level C API).
+  /// @param training-session handle of the training session
+  /// @param is-eval-model when false, returns input & output count of the training model.
+  ///                      When true, returns input & output count of the eval model.
+  /// @returns input count and output count, or error code
+  training-get-model-input-output-count: func(
+    training-session: borrow<training-session>,
+    is-eval-model: bool
+  ) -> result<input-output-count, error-code>;
+
+  /// Gets the input or output name at the specified index (low-level C API).
+  /// @param training-session handle of the training session
+  /// @param index the input or output index
+  /// @param is-input if true, this method retrieves an input name. If false, this method retrieves an output name.
+  /// @param is-eval-model when false, returns input & output names of the training model.
+  ///                      When true, returns input & output names of the eval model.
+  /// @returns a string containing the name, or error code
+  training-get-model-input-output-name: func(
+    training-session: borrow<training-session>,
+    index: u64,
+    is-input: bool,
+    is-eval-model: bool
+  ) -> result<string, error-code>;
+}

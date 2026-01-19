@@ -4,6 +4,9 @@
 # WASI-SDK Configuration
 message(STATUS "Configuring ONNXRuntime for WASI-SDK")
 
+# # Include OpenH264 for video encoding/decoding support
+# include(external/openh264.cmake)
+
 function(bundle_static_library bundled_target_name)
   function(recursively_collect_dependencies input_target)
     set(input_link_libraries LINK_LIBRARIES)
@@ -174,7 +177,7 @@ if (onnxruntime_BUILD_WEBASSEMBLY_STATIC_LIB)
 else()
   file(GLOB_RECURSE onnxruntime_webassembly_src CONFIGURE_DEPENDS
     # "${ONNXRUNTIME_ROOT}/wasm/api.cc" TODO:
-    "${ONNXRUNTIME_ROOT}/wasm/simple.cpp"
+    "${ONNXRUNTIME_ROOT}/wasm/component.cpp"
   )
 
   source_group(TREE ${REPO_ROOT} FILES ${onnxruntime_webassembly_src})
@@ -212,7 +215,19 @@ else()
     onnxruntime_session
     onnxruntime_util
     re2::re2
+    # openh264
   )
+
+  # # Add OpenH264 include directory
+  # # Note: The directory will be created during the build, so we set it directly
+  # if(CMAKE_SYSTEM_NAME STREQUAL "WASI" AND TARGET openh264)
+  #   # Use the cached include directory path from openh264.cmake
+  #   if(OPENH264_INCLUDE_DIR)
+  #     target_include_directories(onnxruntime_webassembly PRIVATE
+  #       ${OPENH264_INCLUDE_DIR}
+  #     )
+  #   endif()
+  # endif()
 
   # For WebGPU: Add wasi-webgpu-headers adapter sources
   if (onnxruntime_USE_WEBGPU)
@@ -221,6 +236,9 @@ else()
 
     target_link_libraries(onnxruntime_webassembly PRIVATE
       "${WASI_WEBGPU_HEADERS_PATH}/imports_component_type.o"
+    )
+    target_link_libraries(onnxruntime_webassembly PRIVATE
+      "${ONNXRUNTIME_ROOT}/../hand-rolled/onnx_runtime_impl_component_type.o"
     )
 
     # # Add include directory for imports.h
@@ -232,6 +250,7 @@ else()
     target_sources(onnxruntime_webassembly PRIVATE
       "${WASI_WEBGPU_HEADERS_PATH}/webgpu.c"
       "${WASI_WEBGPU_HEADERS_PATH}/imports.c"
+      "${ONNXRUNTIME_ROOT}/../hand-rolled/onnx_runtime_impl.c"
     )
   endif()
   # WASI-specific link options
@@ -250,7 +269,7 @@ else()
     -Wl,--no-entry
     -Wl,--stack-first
     -Wl,-z,stack-size=1048576  # 1MB stack
-    # -mexec-model=reactor  # Use reactor model for better compatibility with host imports
+    -mexec-model=reactor  # Use reactor model for better compatibility with host imports
   )
 
   # Memory configuration for WASI

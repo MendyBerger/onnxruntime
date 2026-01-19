@@ -1,0 +1,393 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+// WIT (WebAssembly Interface Types) definition for ONNX Runtime WASM API
+// This file is based on the TypeScript definitions in ts-defs/ rather than the low-level C API.
+// It represents the higher-level, more ergonomic API surface.
+
+package onnxruntime:wasm;
+
+world ort-wasm-ts {
+  // ============================================================================
+  // Core Types
+  // ============================================================================
+
+  /// Tensor data types
+  type tensor-type = enum {
+    float32,
+    uint8,
+    int8,
+    uint16,
+    int16,
+    int32,
+    int64,
+    string,
+    bool,
+    float16,
+    float64,
+    uint32,
+    uint64,
+    uint4,
+    int4,
+  }
+
+  /// Data location for tensor storage
+  type data-location = enum {
+    none,
+    cpu,
+    cpu-pinned,
+    texture,
+    gpu-buffer,
+    ml-tensor,
+  }
+
+  /// Graph optimization level
+  type graph-optimization-level = enum {
+    disabled,
+    basic,
+    extended,
+    layout,
+    all,
+  }
+
+  /// Execution mode
+  type execution-mode = enum {
+    sequential,
+    parallel,
+  }
+
+  /// Log severity level
+  type log-severity-level = enum {
+    verbose,  // 0
+    info,     // 1
+    warning,  // 2
+    error,    // 3
+    fatal,    // 4
+  }
+
+  /// Log level for environment
+  type env-log-level = enum {
+    verbose,
+    info,
+    warning,
+    error,
+    fatal,
+  }
+
+  // ============================================================================
+  // Tensor Types
+  // ============================================================================
+
+  /// Represents a tensor value
+  resource tensor {
+    /// Get the dimensions of the tensor
+    get-dims: func(self: borrow<tensor>) -> list<u64>;
+
+    /// Get the data type of the tensor
+    get-type: func(self: borrow<tensor>) -> tensor-type;
+
+    /// Get the data location
+    get-location: func(self: borrow<tensor>) -> data-location;
+
+    /// Get CPU data (throws if data is not on CPU)
+    get-cpu-data: func(self: borrow<tensor>) -> list<u8>;
+
+    /// Get tensor data (downloads from GPU if necessary)
+    /// Returns the data as bytes, format depends on tensor type
+    get-data: func(self: borrow<tensor>) -> list<u8>;
+
+    /// Dispose the tensor data
+    dispose: func(self: borrow<tensor>);
+
+    drop: func(self: borrow<tensor>);
+  }
+
+  /// Tensor metadata
+  record tensor-metadata {
+    name: string,
+    type: tensor-type,
+    dims: list<u64>,  // Empty list if shape is not defined, numbers for fixed dims, strings for symbolic dims
+  }
+
+  /// Value metadata (can be tensor or non-tensor)
+  variant value-metadata {
+    tensor(tensor-metadata),
+    non-tensor(non-tensor-metadata),
+  }
+
+  record non-tensor-metadata {
+    name: string,
+  }
+
+  // ============================================================================
+  // Session Options
+  // ============================================================================
+
+  /// Execution provider configuration
+  variant execution-provider-config {
+    cpu(cpu-execution-provider),
+    cuda(cuda-execution-provider),
+    webgl(webgl-execution-provider),
+    webgpu(webgpu-execution-provider),
+    webnn(webnn-execution-provider),
+    wasm(wasm-execution-provider),
+    custom(custom-execution-provider),
+  }
+
+  record cpu-execution-provider {
+    use-arena: option<bool>,
+  }
+
+  record cuda-execution-provider {
+    device-id: option<u32>,
+  }
+
+  record webgl-execution-provider {
+    // WebGL-specific options
+  }
+
+  record webgpu-execution-provider {
+    preferred-layout: option<string>,  // 'NCHW' | 'NHWC'
+  }
+
+  record webnn-execution-provider {
+    device-type: option<string>,  // 'cpu' | 'gpu' | 'npu'
+    num-threads: option<u32>,
+    power-preference: option<string>,  // 'default' | 'low-power' | 'high-performance'
+  }
+
+  record wasm-execution-provider {
+    // WASM-specific options
+  }
+
+  record custom-execution-provider {
+    name: string,
+    options: map<string, string>,
+  }
+
+  /// External data file description
+  record external-data-file {
+    path: string,
+    data: list<u8>,
+  }
+
+  /// Session options for creating an inference session
+  record session-options {
+    /// Execution providers
+    execution-providers: option<list<execution-provider-config>>,
+
+    /// Thread configuration
+    intra-op-num-threads: option<u32>,
+    inter-op-num-threads: option<u32>,
+
+    /// Free dimension overrides
+    free-dimension-overrides: option<map<string, u64>>,
+
+    /// Optimization settings
+    graph-optimization-level: option<graph-optimization-level>,
+    enable-cpu-mem-arena: option<bool>,
+    enable-mem-pattern: option<bool>,
+    execution-mode: option<execution-mode>,
+
+    /// Model file options
+    optimized-model-file-path: option<string>,
+    external-data: option<list<external-data-file>>,
+
+    /// Profiling
+    enable-profiling: option<bool>,
+    profile-file-prefix: option<string>,
+
+    /// Logging
+    log-id: option<string>,
+    log-severity-level: option<log-severity-level>,
+    log-verbosity-level: option<u32>,
+
+    /// Output location preferences (for WebGL/WebGPU)
+    preferred-output-location: option<data-location>,
+
+    /// Graph capture (for WebGPU)
+    enable-graph-capture: option<bool>,
+
+    /// Extra configuration
+    extra: option<map<string, string>>,
+  }
+
+  /// Run options for inference
+  record run-options {
+    log-severity-level: option<log-severity-level>,
+    log-verbosity-level: option<u32>,
+    terminate: option<bool>,
+    tag: option<string>,
+    extra: option<map<string, string>>,
+  }
+
+  // ============================================================================
+  // Inference Session
+  // ============================================================================
+
+  /// Represents a runtime instance of an ONNX model
+  resource inference-session {
+    /// Execute the model with the given feeds
+    /// @param feeds Map of input names to tensor values
+    /// @param options Optional run options
+    /// @returns Map of output names to tensor values
+    run: func(
+      self: borrow<inference-session>,
+      feeds: map<string, tensor>,
+      options: option<run-options>
+    ) -> result<map<string, tensor>, error>;
+
+    /// Execute the model with the given feeds and fetches
+    /// @param feeds Map of input names to tensor values
+    /// @param fetches Optional map of output names to pre-allocated tensors (or null)
+    /// @param options Optional run options
+    /// @returns Map of output names to tensor values
+    run-with-fetches: func(
+      self: borrow<inference-session>,
+      feeds: map<string, tensor>,
+      fetches: option<map<string, option<tensor>>>,
+      options: option<run-options>
+    ) -> result<map<string, tensor>, error>;
+
+    /// Release the inference session and underlying resources
+    release: func(self: borrow<inference-session>) -> result<_, error>;
+
+    /// Start profiling
+    start-profiling: func(self: borrow<inference-session>);
+
+    /// End profiling
+    end-profiling: func(self: borrow<inference-session>) -> option<string>;
+
+    /// Get input names
+    get-input-names: func(self: borrow<inference-session>) -> list<string>;
+
+    /// Get output names
+    get-output-names: func(self: borrow<inference-session>) -> list<string>;
+
+    /// Get input metadata
+    get-input-metadata: func(self: borrow<inference-session>) -> list<value-metadata>;
+
+    /// Get output metadata
+    get-output-metadata: func(self: borrow<inference-session>) -> list<value-metadata>;
+
+    drop: func(self: borrow<inference-session>);
+  }
+
+  // ============================================================================
+  // Tensor Factory
+  // ============================================================================
+
+  /// Create a tensor from data
+  /// @param type Tensor data type
+  /// @param data Tensor data as bytes (format depends on type)
+  /// @param dims Tensor dimensions
+  /// @returns Created tensor
+  create-tensor: func(
+    type: tensor-type,
+    data: list<u8>,
+    dims: list<u64>
+  ) -> result<tensor, error>;
+
+  /// Create a tensor with specific data location
+  create-tensor-with-location: func(
+    type: tensor-type,
+    data: list<u8>,
+    dims: list<u64>,
+    location: data-location
+  ) -> result<tensor, error>;
+
+  // ============================================================================
+  // Inference Session Factory
+  // ============================================================================
+
+  /// Create a new inference session from a model buffer
+  /// @param model-data ONNX model data
+  /// @param options Session options
+  /// @returns Inference session
+  create-inference-session: func(
+    model-data: list<u8>,
+    options: option<session-options>
+  ) -> result<inference-session, error>;
+
+  /// Create a new inference session from a model buffer segment
+  /// @param model-data ONNX model data
+  /// @param byte-offset Starting byte offset
+  /// @param byte-length Length in bytes (0 means to end of buffer)
+  /// @param options Session options
+  /// @returns Inference session
+  create-inference-session-from-segment: func(
+    model-data: list<u8>,
+    byte-offset: u64,
+    byte-length: u64,
+    options: option<session-options>
+  ) -> result<inference-session, error>;
+
+  // ============================================================================
+  // Environment Configuration
+  // ============================================================================
+
+  /// WebAssembly flags
+  record wasm-flags {
+    num-threads: option<u32>,
+    simd: option<bool>,
+    init-timeout: option<u32>,  // milliseconds, 0 means no timeout
+  }
+
+  /// WebGL flags
+  record webgl-flags {
+    context-id: option<string>,  // 'webgl' | 'webgl2'
+    texture-cache-mode: option<string>,  // 'initializerOnly' | 'full'
+    pack: option<bool>,
+    async: option<bool>,
+  }
+
+  /// WebGPU flags
+  record webgpu-flags {
+    validate-input-content: option<bool>,
+  }
+
+  /// Environment configuration
+  record env-config {
+    log-level: option<env-log-level>,
+    debug: option<bool>,
+    trace: option<bool>,
+    wasm: option<wasm-flags>,
+    webgl: option<webgl-flags>,
+    webgpu: option<webgpu-flags>,
+  }
+
+  /// Set environment configuration
+  set-env: func(config: env-config) -> result<_, error>;
+
+  /// Get current environment configuration
+  get-env: func() -> env-config;
+
+  // ============================================================================
+  // Error Types
+  // ============================================================================
+
+  /// Error information
+  variant error {
+    initialization-error(string),
+    session-creation-error(string),
+    inference-error(string),
+    tensor-error(string),
+    invalid-argument(string),
+    runtime-error(string),
+    unknown-error(string),
+  }
+
+  // ============================================================================
+  // Utility Functions
+  // ============================================================================
+
+  /// Get version information
+  record version-info {
+    common: string,
+    web: option<string>,
+    node: option<string>,
+    react-native: option<string>,
+  }
+
+  get-version: func() -> version-info;
+}

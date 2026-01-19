@@ -1,0 +1,448 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+// WIT (WebAssembly Interface Types) definition for ONNX Runtime WASM API
+// This file is converted from onnxruntime/wasm/api.h
+
+package onnxruntime:wasm;
+
+world ort-wasm {
+  // Resource types for handles
+  resource session {
+    drop: func(self: borrow<session>);
+  }
+
+  resource session-options {
+    drop: func(self: borrow<session-options>);
+  }
+
+  resource run-options {
+    drop: func(self: borrow<run-options>);
+  }
+
+  resource tensor {
+    drop: func(self: borrow<tensor>);
+  }
+
+  resource io-binding {
+    drop: func(self: borrow<io-binding>);
+  }
+
+  // Training resources (when ENABLE_TRAINING_APIS is enabled)
+  resource training-checkpoint {
+    drop: func(self: borrow<training-checkpoint>);
+  }
+
+  resource training-session {
+    drop: func(self: borrow<training-session>);
+  }
+
+  // Error types
+  type error-code = s32;
+
+  // Type information (opaque pointer in C, represented as list<u8> in WIT)
+  type type-info = list<u8>;
+
+  // Input/Output metadata
+  record input-output-metadata {
+    name: string,
+    type-info: type-info,
+  }
+
+  // Tensor data structure
+  record tensor-data {
+    data-type: u64,
+    data: list<u8>,
+    dims: list<u64>,
+  }
+
+  // Provider options
+  record provider-options {
+    keys: list<string>,
+    values: list<string>,
+  }
+
+  // Error info
+  record error-info {
+    error-code: s32,
+    error-message: string,
+  }
+
+  // Input/Output count
+  record input-output-count {
+    input-count: u64,
+    output-count: u64,
+  }
+
+  // Exported functions
+
+  /// Create an instance of ORT session options.
+  /// @param graph-optimization-level disabled, basic, extended, layout, or enable all
+  /// @param enable-cpu-mem-arena enable or disable cpu memory arena
+  /// @param enable-mem-pattern enable or disable memory pattern
+  /// @param execution-mode sequential or parallel execution mode
+  /// @param enable-profiling enable or disable profiling.
+  /// @param profile-file-prefix file prefix for profiling data. it's a no-op and for a future use.
+  /// @param log-id logger id for session output
+  /// @param log-severity-level verbose, info, warning, error or fatal
+  /// @param log-verbosity-level vlog level
+  /// @param optimized-model-filepath filepath of the optimized model to dump.
+  /// @returns a session option handle, or error code
+  create-session-options: func(
+    graph-optimization-level: u64,
+    enable-cpu-mem-arena: bool,
+    enable-mem-pattern: bool,
+    execution-mode: u64,
+    enable-profiling: bool,
+    profile-file-prefix: string,
+    log-id: string,
+    log-severity-level: u64,
+    log-verbosity-level: u64,
+    optimized-model-filepath: string
+  ) -> result<session-options, error-code>;
+
+  /// Release the specified ORT session options.
+  release-session-options: func(session-options: session-options) -> error-code;
+
+  /// Create an instance of ORT session.
+  /// @param data a buffer that contains the ONNX or ORT format model.
+  /// @param session-options handle to session options
+  /// @returns an ORT session handle, or error code
+  create-session: func(
+    data: list<u8>,
+    session-options: borrow<session-options>
+  ) -> result<session, error-code>;
+
+  /// Release the specified ORT session.
+  release-session: func(session: session) -> error-code;
+
+  /// Create an instance of ORT tensor.
+  /// @param data-type data type defined in enum ONNXTensorElementDataType.
+  /// @param data for numeric tensor: the tensor data buffer. for string tensor: a C-Style null terminated string array.
+  /// @param dims array of dimensions
+  /// @param data-location specify the memory location of the tensor data. 0 for CPU, 1 for GPU buffer.
+  /// @returns a tensor handle, or error code
+  create-tensor: func(
+    data-type: s32,
+    data: list<u8>,
+    dims: list<u64>,
+    data-location: s32
+  ) -> result<tensor, error-code>;
+
+  /// Release the specified tensor.
+  release-tensor: func(tensor: tensor) -> error-code;
+
+  /// Create an instance of ORT run options.
+  /// @param log-severity-level verbose, info, warning, error or fatal
+  /// @param log-verbosity-level vlog level
+  /// @param terminate if true, all incomplete run calls will exit as soon as possible
+  /// @param tag tag for this run
+  /// @returns a run option handle
+  create-run-options: func(
+    log-severity-level: u64,
+    log-verbosity-level: u64,
+    terminate: bool,
+    tag: string
+  ) -> run-options;
+
+  /// Release the specified ORT run options.
+  release-run-options: func(run-options: run-options) -> error-code;
+
+  /// Create an instance of ORT IO binding.
+  create-binding: func(session: borrow<session>) -> result<io-binding, error-code>;
+
+  /// Release the specified ORT IO binding.
+  release-binding: func(io-binding: io-binding) -> error-code;
+
+  /// Load the checkpoint for training.
+  /// @param checkpoint-data buffer containing the CheckpointState
+  /// @return training checkpoint handle, or error code
+  training-load-checkpoint: func(
+    checkpoint-data: list<u8>
+  ) -> result<training-checkpoint, error-code>;
+
+  /// Release the specified ORT training checkpoint state.
+  training-release-checkpoint: func(
+    training-checkpoint: training-checkpoint
+  ) -> error-code;
+
+  /// Creates an instance of a training session that can be used to begin or resume training from a given checkpoint state
+  /// for the given onnx models.
+  /// @param options Session options that the user can customize for this training session.
+  /// @param training-checkpoint Training states that the training session uses as a starting point for training.
+  /// @param train-model buffer containing the ONNX training model
+  /// @param eval-model buffer containing the ONNX evaluation model
+  /// @param optimizer-model buffer containing the ONNX optimizer model
+  /// @return a handle of the ORT training session, or error code
+  training-create-session: func(
+    options: borrow<session-options>,
+    training-checkpoint: borrow<training-checkpoint>,
+    train-model: list<u8>,
+    eval-model: list<u8>,
+    optimizer-model: list<u8>
+  ) -> result<training-session, error-code>;
+
+  /// Release the specified ORT training session.
+  training-release-session: func(
+    training-session: training-session
+  ) -> error-code;
+
+  /// Perform global initialization. Should be called only once.
+  /// @param num-threads number of total threads to use.
+  /// @param logging-level default logging level.
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  init: func(num-threads: s32, logging-level: s32) -> error-code;
+
+  /// Get the last error.
+  /// @param error-code [out] a pointer to accept the error code.
+  /// @param error-message [out] a pointer to accept the error message. The message buffer is only available before any ORT API is called.
+  get-last-error: func() -> result<error-info, error-code>;
+
+  /// Append an execution provider for a session.
+  /// @param session-options handle to session options
+  /// @param name the name of the execution provider
+  /// @param provider-options provider options as key-value pairs
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  append-execution-provider: func(
+    session-options: borrow<session-options>,
+    name: string,
+    provider-options: provider-options
+  ) -> error-code;
+
+  /// Add a free dimension override for one dimension of a session's input.
+  add-free-dimension-override: func(
+    session-options: borrow<session-options>,
+    dim-param-name: string,
+    dim-value: s32
+  ) -> error-code;
+
+  /// Store configurations for a session.
+  /// @param session-options a handle to session options created by create-session-options
+  /// @param config-key configuration keys and value formats are defined in
+  ///                   include/onnxruntime/core/session/onnxruntime_session_options_config_keys.h
+  /// @param config-value value for config-key
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  add-session-config-entry: func(
+    session-options: borrow<session-options>,
+    config-key: string,
+    config-value: string
+  ) -> error-code;
+
+  /// Get model's input count and output count.
+  /// @param session handle of the specified session
+  /// @returns input count and output count, or error code
+  get-input-output-count: func(session: borrow<session>) -> result<input-output-count, error-code>;
+
+  /// Get the metadata of the specified input or output of the model.
+  /// @param session handle of the specified session
+  /// @param index the input index or output index. index should be in range [0, input_count + output_count). if the index
+  /// is in range [0, input_count), it's an input index. otherwise, it's an output index.
+  /// @returns metadata containing name and type info, or error code
+  get-input-output-metadata: func(
+    session: borrow<session>,
+    index: u64
+  ) -> result<input-output-metadata, error-code>;
+
+  /// Free the specified buffer.
+  /// @param ptr a pointer to the buffer.
+  /// Note: In WIT, memory management is typically handled automatically, but this function
+  /// is provided for compatibility with the C API.
+  free: func(ptr: list<u8>) -> error-code;
+
+  /// Get type, shape info and data of the specified tensor.
+  /// @param tensor handle of the tensor.
+  /// @returns tensor data containing type, data, and dimensions, or error code
+  get-tensor-data: func(tensor: borrow<tensor>) -> result<tensor-data, error-code>;
+
+  /// Set a single run configuration entry
+  /// @param run-options a handle to run options created by create-run-options
+  /// @param config-key configuration keys and value formats are defined in
+  ///                   include/onnxruntime/core/session/onnxruntime_run_options_config_keys.h
+  /// @param config-value value for config-key
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  add-run-config-entry: func(
+    run-options: borrow<run-options>,
+    config-key: string,
+    config-value: string
+  ) -> error-code;
+
+  /// Bind an input tensor to the IO binding instance. A cross device copy will be performed if necessary.
+  /// @param io-binding handle of the IO binding
+  /// @param name name of the input
+  /// @param input handle of the input tensor
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  bind-input: func(
+    io-binding: borrow<io-binding>,
+    name: string,
+    input: borrow<tensor>
+  ) -> error-code;
+
+  /// Bind an output tensor or location to the IO binding instance.
+  /// @param io-binding handle of the IO binding
+  /// @param name name of the output
+  /// @param output handle of the output tensor. null for output location binding.
+  /// @param output-location specify the memory location of the output tensor data.
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  bind-output: func(
+    io-binding: borrow<io-binding>,
+    name: string,
+    output: option<borrow<tensor>>,
+    output-location: s32
+  ) -> error-code;
+
+  /// Clear all bound outputs.
+  clear-bound-outputs: func(io-binding: borrow<io-binding>) -> error-code;
+
+  /// Inference the model using IO binding.
+  /// @param session handle of the specified session
+  /// @param io-binding handle of the IO binding
+  /// @param output-count number of outputs expected
+  /// @param run-options handle of the run options
+  /// @returns array of output tensor handles, or error code
+  run-with-binding: func(
+    session: borrow<session>,
+    io-binding: borrow<io-binding>,
+    output-count: u64,
+    run-options: option<borrow<run-options>>
+  ) -> result<list<tensor>, error-code>;
+
+  /// Inference the model.
+  /// @param session handle of the specified session
+  /// @param input-names array of input names
+  /// @param inputs array of input tensor handles
+  /// @param output-names array of output names
+  /// @param output-count number of outputs expected
+  /// @param run-options handle of the run options
+  /// @returns array of output tensor handles, or error code
+  run: func(
+    session: borrow<session>,
+    input-names: list<string>,
+    inputs: list<borrow<tensor>>,
+    output-names: list<string>,
+    output-count: u64,
+    run-options: option<borrow<run-options>>
+  ) -> result<list<tensor>, error-code>;
+
+  /// End profiling.
+  /// @param session handle of the specified session
+  /// @returns a string containing the profile filename, or null if profiling is not enabled.
+  /// Caller must free the string after use by calling free().
+  end-profiling: func(session: borrow<session>) -> option<string>;
+
+  // WebGPU API Section (when USE_WEBGPU is enabled)
+  /// Get the GPU Device by device ID.
+  /// This function is only available after the GPU Device is initialized in WebGpuContextFactory.
+  /// @returns a WGPUDevice handle (represented as u64 in WIT).
+  /// Note: WGPUDevice is an opaque handle type, represented as u64 for WIT compatibility.
+  get-webgpu-device: func(device-id: s32) -> u64;
+
+  // Training API Section (when ENABLE_TRAINING_APIS is enabled)
+
+  /// Resets the gradients of all trainable parameters to zero for the specified TrainingSession
+  /// @param training-session handle of the training session
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  training-lazy-reset-grad: func(
+    training-session: borrow<training-session>
+  ) -> error-code;
+
+  /// Run a single training step.
+  /// @param training-session session handle of the specified session
+  /// @param inputs user inputs to the training model
+  /// @param output-count number of user outputs expected from this train step
+  /// @param run-options handle of the run options
+  /// @returns user outputs computed by train step, or error code
+  training-run-train-step: func(
+    training-session: borrow<training-session>,
+    inputs: list<borrow<tensor>>,
+    output-count: u64,
+    run-options: option<borrow<run-options>>
+  ) -> result<list<tensor>, error-code>;
+
+  /// Performs weight updates for the trainable parameters in the given training session using the optimizer model.
+  /// @param training-session handle of the training session
+  /// @param run-options optional parameter of run options for this training step
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  training-optimizer-step: func(
+    training-session: borrow<training-session>,
+    run-options: option<borrow<run-options>>
+  ) -> error-code;
+
+  /// Computes outputs for the eval model associated with the given training session.
+  /// @param training-session handle of the training session
+  /// @param inputs the user inputs to the eval model
+  /// @param output-count number of user outputs expected from this eval step
+  /// @param run-options run options for this eval step
+  /// @returns user outputs computed by the eval step, or error code
+  training-eval-step: func(
+    training-session: borrow<training-session>,
+    inputs: list<borrow<tensor>>,
+    output-count: u64,
+    run-options: option<borrow<run-options>>
+  ) -> result<list<tensor>, error-code>;
+
+  /// Retrieves the size of all parameters for the training state.
+  /// When the trainable-only argument is true, the size is calculated for trainable params only.
+  /// @param training-session handle of the training session
+  /// @param trainable-only skips non-trainable parameters when true.
+  /// @returns parameter size, or error code
+  training-get-parameters-size: func(
+    training-session: borrow<training-session>,
+    trainable-only: bool
+  ) -> result<u64, error-code>;
+
+  /// Copy all parameters to a contiguous buffer held by the argument parameters-buffer
+  /// User is responsible for allocating and freeing resources used by the parameters-buffer.
+  /// Parameter ordering is preserved.
+  /// @param training-session handle of the training session
+  /// @param parameters-buffer [out] pre-allocated tensor buffer to copy onto. Must be same size as results of
+  ///                          get-parameters-size api call
+  /// @param parameter-count number of parameters expected in the parameters-buffer
+  /// @param trainable-only whether to skip non-trainable parameters
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  training-copy-parameters-to-buffer: func(
+    training-session: borrow<training-session>,
+    parameters-buffer: borrow<tensor>,
+    parameter-count: u64,
+    trainable-only: bool
+  ) -> error-code;
+
+  /// Copy parameters values from given contiguous buffer held by parameters-buffer to the training state.
+  /// Parameter ordering is preserved.
+  /// @param training-session handle of the training session
+  /// @param parameters-buffer tensor buffer to copy from. Must be same size as results of
+  ///                          get-parameters-size api call
+  /// @param parameter-count number of parameters expected in the parameters-buffer
+  /// @param trainable-only whether to skip non-trainable parameters
+  /// @returns ORT error code. If not zero, call get-last-error() to get detailed error message.
+  training-copy-parameters-from-buffer: func(
+    training-session: borrow<training-session>,
+    parameters-buffer: borrow<tensor>,
+    parameter-count: u64,
+    trainable-only: bool
+  ) -> error-code;
+
+  /// Gets the input count and output count of the training or eval model associated with the given training handle.
+  /// @param training-session handle of the training session
+  /// @param is-eval-model when false, returns input & output count of the training model. When true, returns input & output
+  ///                    count of the eval model.
+  /// @returns input count and output count, or error code
+  training-get-model-input-output-count: func(
+    training-session: borrow<training-session>,
+    is-eval-model: bool
+  ) -> result<input-output-count, error-code>;
+
+  /// Gets the input or output name at the specified index associated with the training or eval model from the
+  /// given training session.
+  /// @param training-session handle of the training session
+  /// @param index the input or output index
+  /// @param is-input if true, this method retrieves an input name. If false, this method retrieves an output name.
+  /// @param is-eval-model when false, returns input & output names of the training model. When true, returns input & output
+  ///                    names of the eval model.
+  /// @returns a string containing the name. Caller must free the string after use by calling free().
+  training-get-model-input-output-name: func(
+    training-session: borrow<training-session>,
+    index: u64,
+    is-input: bool,
+    is-eval-model: bool
+  ) -> result<string, error-code>;
+}

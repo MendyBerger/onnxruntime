@@ -1,0 +1,12 @@
+[package]
+name = "rust-guest"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasi = "0.14.7"
+wit-bindgen = "0.49.0"
+wstd = "0.6.3"
