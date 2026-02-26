@@ -1,3 +1,16 @@
+```shell
+export WASI_SDK_PATH=/media/mendyberger/USB-Card/wasi/playground-main/webgpu-native-wasi/wasi-sdk
+./build_wac.sh
+```
+
+Output at `./wacd.wasm`
+
+
+
+<!--
+
+# OLD
+
 wasmtime run --dir=. build_wasi/ort-wasi-simd.wasm
 
 python3 tools/python/convert_onnx_models_to_ort.py squeezenet.onnx --output_dir .
@@ -17,4 +30,4 @@ webgpu-spec: a2637f7b880c2556919cdb288fe89815e0ed1c41 (https://github.com/google
 from wasi:webgpu spec:
 webgpu-headers option 1: a2da5f3057228374aaa1df7e3d30c3ebcda8f951 (about same time as wasi:webgpu is pinned to)
 webgpu-headers option 2: 60cd9020309b87a30cd7240aad32accd24262a5e (dawn was pinned to it at some point, a few months later https://github.com/google/dawn/commit/37ff63983f04b88637a5d3bf8074714d7127f2c5)
-https://github.com/webgpu-native/webgpu-headers/compare/a2da5f3057228374aaa1df7e3d30c3ebcda8f951..60cd9020309b87a30cd7240aad32accd24262a5e
+https://github.com/webgpu-native/webgpu-headers/compare/a2da5f3057228374aaa1df7e3d30c3ebcda8f951..60cd9020309b87a30cd7240aad32accd24262a5e -->
