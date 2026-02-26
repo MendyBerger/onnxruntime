@@ -47,6 +47,7 @@ cmake "$SCRIPT_DIR/cmake" \
     -Donnxruntime_USE_WEBGPU=ON \
     -Donnxruntime_WGSL_TEMPLATE=static \
     -DONNX_DISABLE_EXCEPTIONS=ON \
+    -Donnxruntime_MINIMAL_BUILD_CUSTOM_OPS_CONFIG=/media/mendyberger/USB-Card/wasi/onnxruntime/trustmark_operators.config \
     "$@"
 
     #  -DCMAKE_BUILD_TYPE=Debug \

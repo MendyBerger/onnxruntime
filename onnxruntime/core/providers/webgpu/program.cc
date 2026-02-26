@@ -151,10 +151,16 @@ int NumberOfComponents(ProgramVariableDataType type) {
 }
 
 ProgramVariableDataType ToProgramVariableDataType(int32_t element_type, int component /* = 1 */) {
+  // // Convert FLOAT16 to FLOAT32
+  // if (element_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+  //   element_type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+  // }
+
   if (component == 1) {
     switch (element_type) {
       case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
         return ProgramVariableDataType::Float32;
+      // Remove FLOAT16 case - it's now handled above
       case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16:
         return ProgramVariableDataType::Float16;
       case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:
@@ -172,8 +178,7 @@ ProgramVariableDataType ToProgramVariableDataType(int32_t element_type, int comp
     switch (element_type) {
       case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
         return ProgramVariableDataType::Float32x2;
-      case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16:
-        return ProgramVariableDataType::Float16x2;
+      // Remove FLOAT16 case
       case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:
         return ProgramVariableDataType::Int32x2;
       case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32:
@@ -189,6 +194,7 @@ ProgramVariableDataType ToProgramVariableDataType(int32_t element_type, int comp
         return ProgramVariableDataType::Int8x4;
       case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
         return ProgramVariableDataType::Float32x4;
+      // Remove FLOAT16 case
       case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16:
         return ProgramVariableDataType::Float16x4;
       case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:

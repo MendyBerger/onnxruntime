@@ -520,23 +520,23 @@ std::vector<const char*> WebGpuContext::GetDisabledDeviceToggles() const {
 
 std::vector<wgpu::FeatureName> WebGpuContext::GetAvailableRequiredFeatures(const wgpu::Adapter& adapter) const {
   std::vector<wgpu::FeatureName> required_features;
-//   constexpr wgpu::FeatureName features[]{
-// #if !defined(__wasm__)
-//       wgpu::FeatureName::ChromiumExperimentalTimestampQueryInsidePasses,
-//       wgpu::FeatureName::ChromiumExperimentalSubgroupMatrix,
-// #endif
-//       wgpu::FeatureName::TimestampQuery,
-//       wgpu::FeatureName::ShaderF16,
-//       wgpu::FeatureName::Subgroups,
-// #if !defined(__wasm__)
-//       wgpu::FeatureName::BufferMapExtendedUsages,
-// #endif
-//   };
-  // for (auto feature : features) {
-  //   if (adapter.HasFeature(feature)) {
-  //     required_features.push_back(feature);
-  //   }
-  // }
+  constexpr wgpu::FeatureName features[]{
+#if !defined(__wasm__)
+      wgpu::FeatureName::ChromiumExperimentalTimestampQueryInsidePasses,
+      wgpu::FeatureName::ChromiumExperimentalSubgroupMatrix,
+#endif
+      wgpu::FeatureName::TimestampQuery,
+      wgpu::FeatureName::ShaderF16,
+      wgpu::FeatureName::Subgroups,
+#if !defined(__wasm__)
+      wgpu::FeatureName::BufferMapExtendedUsages,
+#endif
+  };
+  for (auto feature : features) {
+    if (adapter.HasFeature(feature)) {
+      required_features.push_back(feature);
+    }
+  }
   return required_features;
 }
 
@@ -732,6 +732,8 @@ void WebGpuContext::Flush(const webgpu::BufferManager& buffer_mgr) {
   }
   auto command_buffer = current_command_encoder_.Finish();
   device_queue_.Submit(1, &command_buffer);
+  // input_tensors.push_back(std::move(*tensor->tensor));
+  // std::cout << "WebGPU commands submitted to queue" << std::endl;
   if (graph_capture_state_ != GraphCaptureState::Replaying) {
     buffer_mgr.RefreshPendingBuffers(graph_capture_state_);
   }

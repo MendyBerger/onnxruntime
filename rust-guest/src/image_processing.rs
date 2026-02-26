@@ -80,6 +80,14 @@ impl TryFrom<ModelImage> for crate::cosmonic::onnx_runtime::types::Tensor {
         // The `image` crate normalizes to `[0,1]`. Trustmark wants images normalized to `[-1,1]`.
         let array = convert_from_0_1_to_neg1_1!(array);
 
+        // DEBUG: Check array values before reshape
+        println!("After normalization - shape: {:?}, range: [{:.4}, {:.4}], sample: {:?}",
+            array.shape(),
+            array.iter().copied().fold(f32::INFINITY, f32::min),
+            array.iter().copied().fold(f32::NEG_INFINITY, f32::max),
+            &array.as_slice().unwrap()[0..200.min(array.len())]
+        );
+
         // let mut array = array
         //     .to_shape([size as usize, size as usize, 3])?
         //     .insert_axis(Axis(3))
@@ -114,9 +122,16 @@ impl TryFrom<ModelImage> for crate::cosmonic::onnx_runtime::types::Tensor {
         array.swap_axes(2, 3);
         assert_eq!(array.shape(), &[1, 3, size as usize, size as usize]);
 
+        println!("After reshape - shape: {:?}, sample: {:?}",
+            array.shape(),
+            array.iter().take(200).copied().collect::<Vec<_>>()
+        );
+
         // Convert to contiguous array and collect as Vec<f32>
         let array = array.as_standard_layout().to_owned();
         let vec_f32: Vec<f32> = array.iter().copied().collect();
+
+        println!("Vec<f32> len: {}, sample: {:?}", vec_f32.len(), &vec_f32[0..200]);
 
         // // Convert Vec<f32> to Vec<u8> by casting the underlying memory
         // let data: Vec<u8> = unsafe {
@@ -131,10 +146,17 @@ impl TryFrom<ModelImage> for crate::cosmonic::onnx_runtime::types::Tensor {
             .into_iter()
             .flat_map(|f| f.to_le_bytes())
             .collect();
+
+        // let data: Vec<u8> = vec_f32
+        //     .iter()
+        //     .flat_map(|&f| half::f16::from_f32(f).to_le_bytes())
+        //     .collect();
+
         // let data: Vec<u8> = safe_transmute::transmute_vec::<f32, u8>(vec_f32).unwrap();
 
         Ok(crate::cosmonic::onnx_runtime::types::create_tensor(
             crate::cosmonic::onnx_runtime::types::TensorType::Float32,
+            // crate::cosmonic::onnx_runtime::types::TensorType::Float16,
             &data,
             &[1, 3, size as u64, size as u64],
         ).unwrap())

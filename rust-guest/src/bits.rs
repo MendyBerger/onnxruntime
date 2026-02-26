@@ -231,6 +231,10 @@ impl From<Bits> for crate::cosmonic::onnx_runtime::types::Tensor {
             .into_iter()
             .flat_map(|f| f.to_le_bytes())
             .collect();
+        // let data: Vec<u8> = array
+        //     .into_iter()
+        //     .flat_map(|f| half::f16::from_f32(f).to_le_bytes())  // Convert to f16 bytes
+        //     .collect();
 
 
         crate::cosmonic::onnx_runtime::types::create_tensor(
@@ -238,6 +242,7 @@ impl From<Bits> for crate::cosmonic::onnx_runtime::types::Tensor {
             // data: list<u8>,
             // dims: list<u64>
             crate::cosmonic::onnx_runtime::types::TensorType::Float32,
+            // crate::cosmonic::onnx_runtime::types::TensorType::Float16,
             &data,
             &[1, 100],
         )

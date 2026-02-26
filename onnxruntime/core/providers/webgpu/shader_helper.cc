@@ -156,11 +156,11 @@ Status ValidateVariableDataType(int32_t element_type, ProgramVariableDataType va
                         "Unexpected program variable type ", int(var_type), " for float32 tensor");
       break;
     case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16:
-      ORT_RETURN_IF_NOT(var_type == ProgramVariableDataType::Float16 ||
-                            var_type == ProgramVariableDataType::Float16x2 ||
-                            var_type == ProgramVariableDataType::Float16x4,
-                        "Unexpected program variable type ", int(var_type), " for float16 tensor");
-
+      // Float16 tensors are converted to Float32, so accept Float32 types
+      ORT_RETURN_IF_NOT(var_type == ProgramVariableDataType::Float32 ||
+                            var_type == ProgramVariableDataType::Float32x2 ||
+                            var_type == ProgramVariableDataType::Float32x4,
+                        "Unexpected program variable type ", int(var_type), " for float16 tensor (converted to float32)");
       break;
     case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:
       ORT_RETURN_IF_NOT(var_type == ProgramVariableDataType::Int32 ||
@@ -401,9 +401,9 @@ Status ShaderHelper::GenerateSourceCode(std::string& code, std::vector<int>& sha
     ORT_RETURN_IF_NOT(device_.HasFeature(wgpu::FeatureName::ShaderF16), "Program ", program_.Name(), " requires f16 but the device does not support it.");
     ss << "enable f16;\n";
   }
-  // if (device_.HasFeature(wgpu::FeatureName::Subgroups)) {
-  //   ss << "enable subgroups;\n";
-  // }
+  if (device_.HasFeature(wgpu::FeatureName::Subgroups)) {
+    ss << "enable subgroups;\n";
+  }
 // #if !defined(__wasm__)
 //   if (device_.HasFeature(wgpu::FeatureName::ChromiumExperimentalSubgroupMatrix)) {
 //     ss << "enable chromium_experimental_subgroup_matrix;\n";

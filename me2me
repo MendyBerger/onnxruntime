@@ -1,0 +1,159 @@
+# Navigate to the conversion script directory
+cd /media/mendyberger/USB-Card/wasi/onnxruntime/tools/python
+
+# Set the optimization level to "extended" (avoids layout optimizations)
+export ORT_CONVERT_ONNX_MODELS_TO_ORT_OPTIMIZATION_LEVEL=basic
+
+# Convert encoder_Q.onnx to encoder_Q.ort
+python3 convert_onnx_models_to_ort.py \
+  /media/mendyberger/USB-Card/wasi/onnxruntime/rust-guest/src/encoder_Q.onnx \
+  --output_dir /media/mendyberger/USB-Card/wasi/onnxruntime/rust-guest/src \
+  --optimization_style Fixed
+
+# Convert decoder_Q.onnx to decoder_Q.ort
+python3 convert_onnx_models_to_ort.py \
+  /media/mendyberger/USB-Card/wasi/onnxruntime/rust-guest/src/decoder_Q.onnx \
+  --output_dir /media/mendyberger/USB-Card/wasi/onnxruntime/rust-guest/src \
+  --optimization_style Fixed
+
+
+
+
+
+
+
+
+python3 -c "
+import onnx
+from onnx import numpy_helper, TensorProto, helper
+import numpy as np
+
+model = onnx.load('encoder_Q.onnx')
+
+# 1. Convert ALL initializers
+for init in model.graph.initializer:
+    if init.data_type == TensorProto.FLOAT16:
+        arr = numpy_helper.to_array(init).astype(np.float32)
+        new_tensor = numpy_helper.from_array(arr, init.name)
+        init.CopyFrom(new_tensor)
+
+# 2. Convert ALL value_info (intermediate tensors)
+for vi in model.graph.value_info:
+    if vi.type.HasField('tensor_type') and vi.type.tensor_type.elem_type == TensorProto.FLOAT16:
+        vi.type.tensor_type.elem_type = TensorProto.FLOAT
+
+# 3. Convert inputs/outputs
+for vi in list(model.graph.input) + list(model.graph.output):
+    if vi.type.HasField('tensor_type') and vi.type.tensor_type.elem_type == TensorProto.FLOAT16:
+        vi.type.tensor_type.elem_type = TensorProto.FLOAT
+
+# 4. Convert node attributes AND remove Cast nodes that cast f16->f32 (now identity)
+nodes_to_remove = []
+for node in model.graph.node:
+    for attr in node.attribute:
+        if attr.type == onnx.AttributeProto.TENSOR and attr.t.data_type == TensorProto.FLOAT16:
+            arr = numpy_helper.to_array(attr.t).astype(np.float32)
+            new_tensor = numpy_helper.from_array(arr, attr.t.name if attr.t.name else '')
+            attr.t.CopyFrom(new_tensor)
+        if attr.name == 'to' and attr.i == TensorProto.FLOAT16:
+            attr.i = TensorProto.FLOAT
+
+# 5. Use ONNX shape inference to fix all intermediate types
+from onnx import shape_inference
+model = shape_inference.infer_shapes(model)
+
+# 6. Re-convert any newly inferred f16 types
+for vi in model.graph.value_info:
+    if vi.type.HasField('tensor_type') and vi.type.tensor_type.elem_type == TensorProto.FLOAT16:
+        vi.type.tensor_type.elem_type = TensorProto.FLOAT
+
+onnx.save(model, 'encoder_Q_f32.onnx')
+print('Done: encoder_Q_f32.onnx')
+"
+
+
+cd /media/mendyberger/USB-Card/wasi/onnxruntime/rust-guest/src
+
+python3 -c "
+import onnx
+from onnx import numpy_helper, TensorProto
+import numpy as np
+import copy
+
+model = onnx.load('decoder_Q.onnx')
+
+# SAVE original inputs/outputs BEFORE any modifications
+original_inputs = [copy.deepcopy(i) for i in model.graph.input]
+original_outputs = [copy.deepcopy(o) for o in model.graph.output]
+
+# 1. Convert ALL initializers
+for init in model.graph.initializer:
+    if init.data_type == TensorProto.FLOAT16:
+        arr = numpy_helper.to_array(init).astype(np.float32)
+        new_tensor = numpy_helper.from_array(arr, init.name)
+        init.CopyFrom(new_tensor)
+
+# 2. Convert ALL value_info (intermediate tensors)
+for vi in model.graph.value_info:
+    if vi.type.HasField('tensor_type') and vi.type.tensor_type.elem_type == TensorProto.FLOAT16:
+        vi.type.tensor_type.elem_type = TensorProto.FLOAT
+
+# 3. Convert inputs/outputs types (keep shapes!)
+for vi in list(model.graph.input) + list(model.graph.output):
+    if vi.type.HasField('tensor_type') and vi.type.tensor_type.elem_type == TensorProto.FLOAT16:
+        vi.type.tensor_type.elem_type = TensorProto.FLOAT
+
+# 4. Convert node attributes
+for node in model.graph.node:
+    for attr in node.attribute:
+        if attr.type == onnx.AttributeProto.TENSOR and attr.t.data_type == TensorProto.FLOAT16:
+            arr = numpy_helper.to_array(attr.t).astype(np.float32)
+            new_tensor = numpy_helper.from_array(arr, attr.t.name if attr.t.name else '')
+            attr.t.CopyFrom(new_tensor)
+        if attr.name == 'to' and attr.i == TensorProto.FLOAT16:
+            attr.i = TensorProto.FLOAT
+
+# 5. RESTORE original input/output structure (just update the type)
+del model.graph.input[:]
+for inp in original_inputs:
+    if inp.type.HasField('tensor_type') and inp.type.tensor_type.elem_type == TensorProto.FLOAT16:
+        inp.type.tensor_type.elem_type = TensorProto.FLOAT
+    model.graph.input.append(inp)
+
+del model.graph.output[:]
+for out in original_outputs:
+    if out.type.HasField('tensor_type') and out.type.tensor_type.elem_type == TensorProto.FLOAT16:
+        out.type.tensor_type.elem_type = TensorProto.FLOAT
+    model.graph.output.append(out)
+
+# SKIP shape_inference - it corrupts the model!
+
+onnx.save(model, 'decoder_Q_f32.onnx')
+print('Done: decoder_Q_f32.onnx')
+
+# Verify
+m = onnx.load('decoder_Q_f32.onnx')
+for i in m.graph.input:
+    dims = [d.dim_value or d.dim_param for d in i.type.tensor_type.shape.dim]
+    print(f'  Input: {i.name}, shape={dims}')
+"
+
+
+
+# Navigate to the conversion script directory
+cd /media/mendyberger/USB-Card/wasi/onnxruntime/tools/python
+
+# Set the optimization level to "extended" (avoids layout optimizations)
+export ORT_CONVERT_ONNX_MODELS_TO_ORT_OPTIMIZATION_LEVEL=disable
+
+
+python3 convert_onnx_models_to_ort.py \
+  /media/mendyberger/USB-Card/wasi/onnxruntime/rust-guest/src/encoder_Q_f32.onnx \
+  --output_dir /media/mendyberger/USB-Card/wasi/onnxruntime/rust-guest/src \
+  --optimization_style Fixed
+
+# Convert decoder_Q.onnx to decoder_Q.ort
+python3 convert_onnx_models_to_ort.py \
+  /media/mendyberger/USB-Card/wasi/onnxruntime/rust-guest/src/decoder_Q_f32.onnx \
+  --output_dir /media/mendyberger/USB-Card/wasi/onnxruntime/rust-guest/src \
+  --optimization_style Fixed

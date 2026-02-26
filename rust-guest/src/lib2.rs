@@ -103,19 +103,21 @@ impl Trustmark {
 
         let encoder = {
             let session_options = types::SessionOptions {
-                graph_optimization_level: Some(types::GraphOptimizationLevel::Disabled),
+                graph_optimization_level: Some(types::GraphOptimizationLevel::Extended),
                 // intra_op_num_threads: Some(8),
             };
-            let model_data: &[u8] = include_bytes!("./encoder_B_f32.disable.ort");
+            let model_data: &[u8] = include_bytes!("./encoder_Q.extended.ort");
+            // let model_data: &[u8] = include_bytes!("./encoder_Q_f32.disable.ort");
             let session = types::create_session(model_data, Some(session_options)).unwrap();
             session
         };
         let decoder = {
             let session_options = types::SessionOptions {
-                graph_optimization_level: Some(types::GraphOptimizationLevel::Disabled),
+                graph_optimization_level: Some(types::GraphOptimizationLevel::Extended),
                 // intra_op_num_threads: Some(8),
             };
-            let model_data: &[u8] = include_bytes!("./decoder_Q_f32.disable.ort");
+            let model_data: &[u8] = include_bytes!("./decoder_Q.extended.ort");
+            // let model_data: &[u8] = include_bytes!("./decoder_Q_f32.disable.ort");
             let session = types::create_session(model_data, Some(session_options)).unwrap();
             session
         };
@@ -208,6 +210,18 @@ impl Trustmark {
             sample.iter().cloned().fold(f32::INFINITY, f32::min),
             sample.iter().cloned().fold(f32::NEG_INFINITY, f32::max));
 
+        // Diagnostic: check if output actually differs from input
+        let differs = input_bytes.iter().zip(output_img_raw.iter()).any(|(a, b)| a != b);
+        println!("Output differs from input: {}", differs);
+
+        // Check middle of tensor (not just edges)
+        let mid_offset = output_img_raw.len() / 2;
+        let mid_sample: Vec<f32> = output_img_raw[mid_offset..mid_offset+80]
+            .chunks_exact(4)
+            .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+            .collect();
+        println!("Encoder middle sample: {:?}", mid_sample);
+
         // let outputs = self.encoder.run(vec![
         //     ("image".to_string(), input_img),
         //     ("input_1".to_string(), bits),      // Alternative 1
@@ -281,6 +295,30 @@ impl Trustmark {
         let residual = (self.variant.strength_multiplier() * strength)
             * (output_img - ndarray::Array::from_shape_vec(ssshape, input_img_array).unwrap());
 
+        // TEMPORARY TEST: bypass residual, feed encoder output directly to decoder
+        let output_tensor = &outputs.iter().find(|(name, _)| name == "image").unwrap().1;
+
+        // // Skip all residual computation, just return the encoder output converted to image
+        // let output_img: Vec<f32> = output_tensor.get_data(None)
+        //     .chunks_exact(4)
+        //     .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+        //     .collect();
+        // let ssshape = [1, 3, encode_size as usize, encode_size as usize];
+        // let output_array: ndarray::ArrayD<f32> = ndarray::Array::from_shape_vec(ndarray::IxDyn(&ssshape), output_img).unwrap();
+        // let ModelImage(_, _, result_image) = (encode_size, self.variant, output_array).try_into()?;
+        // return Ok(result_image);
+
+
+
+
+        // Debug: check residual values
+        let residual_flat = residual.as_slice().unwrap();
+        let residual_nonzero = residual_flat.iter().filter(|&&v| v.abs() > 0.001).count();
+        println!("Residual stats: nonzero (>0.001): {}/{}, min: {:.4}, max: {:.4}",
+            residual_nonzero, residual_flat.len(),
+            residual_flat.iter().cloned().fold(f32::INFINITY, f32::min),
+            residual_flat.iter().cloned().fold(f32::NEG_INFINITY, f32::max));
+
         // Residual should be small perturbations.
         let mut residual = residual.clamp(-0.2, 0.2);
         if (self.variant == Variant::Q && !(0.5..=2.0).contains(&aspect_ratio))
@@ -311,6 +349,17 @@ impl Trustmark {
             println!("input: {}", input.0);
         }
 
+        // Debug: sample the decoder input
+        let dec_input_bytes = img.get_data(None);
+        let dec_input_sample: Vec<f32> = dec_input_bytes[0..80]
+            .chunks_exact(4)
+            .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+            .collect();
+        println!("DECODER input sample (first 20 floats): {:?}", dec_input_sample);
+        println!("DECODER input range: min={}, max={}",
+            dec_input_sample.iter().cloned().fold(f32::INFINITY, f32::min),
+            dec_input_sample.iter().cloned().fold(f32::NEG_INFINITY, f32::max));
+
         let outputs = self.decoder.run(vec![
             ("image".to_string(), img),
         ], None)?;
@@ -327,6 +376,20 @@ impl Trustmark {
                 f32::from_le_bytes(bytes)
             })
             .collect();
+
+        // Debug: show the decoded binary bits
+        let decoded_bits: String = watermark.iter()
+            .map(|&v| if v < 0.0 { '0' } else { '1' })
+            .collect();
+        println!("Decoded bits: {}", decoded_bits);
+
+        // Compare with expected
+        let expected_bits = "1011011110011000111111000000011111011111011100000110110110111";
+        let errors: usize = decoded_bits.chars().zip(expected_bits.chars())
+            .filter(|(a, b)| a != b)
+            .count();
+        println!("Bit errors: {} out of {} (BCH5 allows max 5)", errors, decoded_bits.len());
+
 
         println!("Decoded watermark len: {}", watermark.len());
         println!("Decoded watermark values (first 20): {:?}", &watermark[..20.min(watermark.len())]);

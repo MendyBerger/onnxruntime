@@ -66,6 +66,8 @@ Status CastProgram::GenerateShaderCode(ShaderHelper& sh) const {
   std::string expression;
   switch (to_) {
     case ONNX_NAMESPACE::TensorProto_DataType_FLOAT16:
+      // Convert float16 to float32 since we're treating all f16 as f32
+      // expression = "vec4<f32>(a)";
       expression = "vec4<f16>(a)";
       break;
     case ONNX_NAMESPACE::TensorProto_DataType_FLOAT:

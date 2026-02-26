@@ -8,7 +8,8 @@
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #endif
 
-#include "dawn_wasi_webgpu_cpp/webgpu_cpp.h"
+// #include "dawn_wasi_webgpu_cpp/webgpu_cpp.h"
+#include "/media/mendyberger/USB-Card/wasi/dawn_webgpu_cpp/webgpu_cpp.h"
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop

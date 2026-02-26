@@ -24,7 +24,7 @@ typedef struct exports_cosmonic_onnx_runtime_types_session_t {
 
 typedef struct exports_cosmonic_onnx_runtime_types_tensor_t {
     Ort::Value *tensor;
-    float *data_buffer;  // Add this to track the copied data buffer
+    void *data_buffer;  // Add this to track the copied data buffer
 } exports_cosmonic_onnx_runtime_types_tensor_t;
 
 GraphOptimizationLevel graph_optimization_level_wit_to_cpp(exports_cosmonic_onnx_runtime_types_graph_optimization_level_t graph_optimization_level);
@@ -51,7 +51,7 @@ bool exports_cosmonic_onnx_runtime_types_create_session(onnx_runtime_impl_list_u
 
     // hard code to WebGPU for now
     std::unordered_map<std::string, std::string> webgpu_options;
-    session_options.AppendExecutionProvider("WebGPU", webgpu_options);
+    // session_options.AppendExecutionProvider("WebGPU", webgpu_options);
     // hard code to 1 for now
     session_options.SetIntraOpNumThreads(1);
 
@@ -225,15 +225,70 @@ bool exports_cosmonic_onnx_runtime_types_method_session_run(exports_cosmonic_onn
     ret->len = output_tensors.size();
     ret->ptr = new exports_cosmonic_onnx_runtime_types_tuple2_string_own_tensor_t[ret->len];
 
+    // for (size_t i = 0; i < output_tensors.size(); i++) {
+    //     // Convert output name to WASI string
+    //     ret->ptr[i].f0 = string_cpp_to_wasi(output_names_vec[i].c_str());
+
+    //     // // Wrap the output tensor
+    //     // Ort::Value *ort_value = new Ort::Value(std::move(output_tensors[i]));
+    //     // exports_cosmonic_onnx_runtime_types_tensor_t *tensor = new exports_cosmonic_onnx_runtime_types_tensor_t{
+    //     //     .tensor = ort_value,
+    //     //     .data_buffer = nullptr  // Output tensors don't need a data buffer
+    //     // };
+
+    //     Ort::Value& output_value = output_tensors[i];
+    //     auto shape_info = output_value.GetTensorTypeAndShapeInfo();
+    //     size_t element_count = shape_info.GetElementCount();
+
+    //     // Allocate and copy output data
+    //     float* output_buffer = new float[element_count];
+    //     memcpy(output_buffer, output_value.GetTensorData<float>(), element_count * sizeof(float));
+
+    //     // Create new CPU tensor with copied data
+    //     Ort::MemoryInfo cpu_memory = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    //     Ort::Value *ort_value = new Ort::Value(Ort::Value::CreateTensor<float>(
+    //         cpu_memory,
+    //         output_buffer,
+    //         element_count,
+    //         shape_info.GetShape().data(),
+    //         shape_info.GetShape().size()
+    //     ));
+
+    //     exports_cosmonic_onnx_runtime_types_tensor_t *tensor = new exports_cosmonic_onnx_runtime_types_tensor_t{
+    //         .tensor = ort_value,
+    //         .data_buffer = output_buffer  // Track the buffer so it can be freed later
+    //     };
+
+    //     ret->ptr[i].f1 = exports_cosmonic_onnx_runtime_types_tensor_new(tensor);
+    // }
+
     for (size_t i = 0; i < output_tensors.size(); i++) {
-        // Convert output name to WASI string
         ret->ptr[i].f0 = string_cpp_to_wasi(output_names_vec[i].c_str());
 
-        // Wrap the output tensor
-        Ort::Value *ort_value = new Ort::Value(std::move(output_tensors[i]));
+        // CRITICAL: Copy output data from GPU to CPU memory
+        auto& output_value = output_tensors[i];
+        auto type_info = output_value.GetTensorTypeAndShapeInfo();
+        size_t element_count = type_info.GetElementCount();
+        auto element_type = type_info.GetElementType();
+
+        // Allocate CPU buffer and copy data
+        float* cpu_buffer = new float[element_count];
+        const float* gpu_data = output_value.GetTensorData<float>();
+        memcpy(cpu_buffer, gpu_data, element_count * sizeof(float));
+
+        // Create new CPU tensor with copied data
+        Ort::MemoryInfo cpu_memory = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        Ort::Value* cpu_tensor = new Ort::Value(Ort::Value::CreateTensor<float>(
+            cpu_memory,
+            cpu_buffer,
+            element_count,
+            type_info.GetShape().data(),
+            type_info.GetShape().size()
+        ));
+
         exports_cosmonic_onnx_runtime_types_tensor_t *tensor = new exports_cosmonic_onnx_runtime_types_tensor_t{
-            .tensor = ort_value,
-            .data_buffer = nullptr  // Output tensors don't need a data buffer
+            .tensor = cpu_tensor,
+            .data_buffer = cpu_buffer  // Track buffer for cleanup
         };
         ret->ptr[i].f1 = exports_cosmonic_onnx_runtime_types_tensor_new(tensor);
     }
@@ -275,42 +330,110 @@ bool exports_cosmonic_onnx_runtime_types_create_tensor(exports_cosmonic_onnx_run
         abort();
     }
 
-    Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
 
-    // Calculate number of elements from bytes
-    size_t element_count = data->len / sizeof(float);
+    Ort::Value *ort_value = nullptr;
+    void *data_buffer = nullptr;
 
-    // Copy the data into a buffer that we own (so it persists)
-    float *data_buffer = new float[element_count];
-    if (data_buffer == nullptr) {
+    if (type == EXPORTS_COSMONIC_ONNX_RUNTIME_TYPES_TENSOR_TYPE_FLOAT16) {
+        // printf("Creating Float16 tensor\n");
+        // // Float16 - 2 bytes per element
+        // size_t element_count = data->len / sizeof(Ort::Float16_t);
+        // Ort::Float16_t *f16_buffer = new Ort::Float16_t[element_count];
+        // memcpy(f16_buffer, data->ptr, data->len);
+        // data_buffer = f16_buffer;
+
+        // ort_value = new Ort::Value(Ort::Value::CreateTensor<Ort::Float16_t>(
+        //     memory_info,
+        //     f16_buffer,
+        //     element_count,
+        //     reinterpret_cast<int64_t*>(dims->ptr),
+        //     dims->len
+        // ));
         abort();
+    } else {
+        printf("Creating Float32 tensor\n");
+        // Float32 (default) - 4 bytes per element
+        size_t element_count = data->len / sizeof(float);
+        float *f32_buffer = new float[element_count];
+        memcpy(f32_buffer, data->ptr, data->len);
+        data_buffer = f32_buffer;
+
+
+        // // Debug: verify tensor was created correctly
+        // auto shape = ort_value->GetTensorTypeAndShapeInfo().GetShape();
+        // std::cout << "Created tensor shape: [";
+        // for (auto dim : shape) std::cout << dim << ",";
+        // std::cout << "]" << std::endl;
+
+        // // Verify first few values
+        // float* tensor_data = ort_value->GetTensorMutableData<float>();
+        // std::cout << "Tensor first 5 values: ";
+        // for (int i = 0; i < 5; i++) std::cout << tensor_data[i] << " ";
+        // std::cout << std::endl;
+
+        // // ort_value = new Ort::Value(Ort::Value::CreateTensor<float>(
+        // //     memory_info,
+        // //     f32_buffer,
+        // //     element_count,
+        // //     reinterpret_cast<int64_t*>(dims->ptr),
+        // //     dims->len
+        // // ));
+
+        // Convert uint64_t dims to int64_t dims safely
+        std::vector<int64_t> int64_dims(dims->len);
+        for (size_t i = 0; i < dims->len; i++) {
+            int64_dims[i] = static_cast<int64_t>(dims->ptr[i]);
+            std::cout << "dim[" << i << "] = " << int64_dims[i] << std::endl;
+        }
+
+        // Validate dimensions match element count
+        int64_t calculated_elements = 1;
+        for (size_t i = 0; i < int64_dims.size(); i++) {
+            std::cout << "dim[" << i << "] = " << int64_dims[i] << std::endl;
+            if (int64_dims[i] <= 0) {
+                std::cerr << "ERROR: Invalid dimension at index " << i << ": " << int64_dims[i] << std::endl;
+                abort();
+            }
+            calculated_elements *= int64_dims[i];
+        }
+
+        std::cout << "Calculated elements from dims: " << calculated_elements << std::endl;
+        std::cout << "Actual element count: " << element_count << std::endl;
+
+        if (calculated_elements != element_count) {
+            std::cerr << "ERROR: Dimension mismatch! dims product=" << calculated_elements
+                    << " but element_count=" << element_count << std::endl;
+            abort();
+        }
+
+        ort_value = new Ort::Value(Ort::Value::CreateTensor<float>(
+            memory_info,
+            f32_buffer,
+            element_count,
+            int64_dims.data(),  // Use converted dims
+            int64_dims.size()
+        ));
     }
-    memcpy(data_buffer, data->ptr, data->len);
 
-    // Create tensor with our owned buffer
-    Ort::Value *ort_value = new Ort::Value(Ort::Value::CreateTensor<float>(
-        memory_info,
-        data_buffer,  // Use our owned buffer
-        element_count,
-        reinterpret_cast<int64_t*>(dims->ptr),
-        dims->len
-    ));
-
-    // TODO: remove this after testing
     if (!ort_value->IsTensor()) {
-        abort_4();
+        abort();
     }
 
     if (ort_value == nullptr || *ort_value == nullptr) {
-        delete[] data_buffer;  // Clean up on error
+        if (type == EXPORTS_COSMONIC_ONNX_RUNTIME_TYPES_TENSOR_TYPE_FLOAT16) {
+            delete[] static_cast<Ort::Float16_t*>(data_buffer);
+        } else {
+            delete[] static_cast<float*>(data_buffer);
+        }
         abort();
     }
 
-    // exports_cosmonic_onnx_runtime_types_tensor_t tensor = {
     exports_cosmonic_onnx_runtime_types_tensor_t *tensor = new exports_cosmonic_onnx_runtime_types_tensor_t{
         .tensor = ort_value,
-        .data_buffer = data_buffer  // Store pointer for cleanup
+        .data_buffer = data_buffer
     };
+
     *ret = exports_cosmonic_onnx_runtime_types_tensor_new(tensor);
     return true;
 }

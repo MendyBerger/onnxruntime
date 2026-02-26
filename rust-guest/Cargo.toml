@@ -17,3 +17,4 @@ ndarray = "0.16"
 # ort-sys = { version = "=2.0.0-rc.8", default-features = false }
 thiserror = "1"
 safe-transmute = "0.11.3"
+half = "2"

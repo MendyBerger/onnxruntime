@@ -120,6 +120,25 @@ class ComputeContext {
     ORT_THROW_IF_ERROR(kernel_context_.GetTempSpaceAllocator(&allocator));
     return {data_type, std::forward<TensorShapeType>(shape), allocator};
   }
+
+  // // Add to ComputeContext class in compute_context.h
+  // //
+  // // Convert float16 tensor to float32 if f16 feature is not available
+  // //
+  // template <typename TensorShapeType>
+  // Tensor ConvertFloat16ToFloat32IfNeeded(const Tensor* input_tensor, TensorShapeType&& shape) {
+  //   if (input_tensor->GetElementType() == DataTypeImpl::GetType<MLFloat16>() &&
+  //       !HasFeature(wgpu::FeatureName::ShaderF16)) {
+  //     // Create a float32 tensor
+  //     Tensor float32_tensor = CreateGPUTensor(DataTypeImpl::GetType<float>(), std::forward<TensorShapeType>(shape));
+
+  //     // Convert f16 -> f32 (this would need a conversion kernel or CPU conversion)
+  //     // For now, this is a placeholder - you'd need to implement the actual conversion
+  //     return float32_tensor;
+  //   }
+  //   return *input_tensor; // Return original if no conversion needed
+  // }
+
   //
   // Run a compute shader program.
   //
