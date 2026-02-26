@@ -115,6 +115,9 @@ interface types {
         // /// End profiling
         // end-profiling: func(self: borrow<inference-session>) -> option<string>;
 
+        /// Get input names
+        get-inputs: func() -> list<tuple<string, tensor-type>>;
+
         // /// Get input names
         // get-input-names: func(self: borrow<inference-session>) -> list<string>;
 
@@ -174,6 +177,7 @@ interface types {
 
         /// Get tensor data (downloads from GPU if necessary)
         /// Returns the data as bytes, format depends on tensor type
+        // TODO: should release-data be a optional?
         get-data: func(release-data: option<bool>) -> list<u8>;
 
         // /// Dispose the tensor data

@@ -9,4 +9,11 @@ crate-type = ["cdylib"]
 [dependencies]
 wasi = "0.14.7"
 wit-bindgen = "0.49.0"
-wstd = "0.6.3"
+# wstd = "0.6.3"
+image = "0.25.6"
+fast_image_resize = { version = "5.1.4", features = ["image", "rayon"] }
+ndarray = "0.16"
+# ort = "=2.0.0-rc.8"
+# ort-sys = { version = "=2.0.0-rc.8", default-features = false }
+thiserror = "1"
+safe-transmute = "0.11.3"

@@ -117,7 +117,7 @@ void WebGpuContext::Initialize(const WebGpuBufferCacheConfig& buffer_cache_confi
     // cache device queue
     device_queue_ = device_.GetQueue();
     // cache device limits
-    // ORT_ENFORCE(Device().GetLimits(&device_limits_));
+    ORT_ENFORCE(Device().GetLimits(&device_limits_));
     // cache device features
     // wgpu::SupportedFeatures supported_features;
     // Device().GetFeatures(&supported_features);

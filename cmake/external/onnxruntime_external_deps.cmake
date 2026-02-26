@@ -786,8 +786,8 @@ if (onnxruntime_USE_WEBGPU)
       message(STATUS "Using wasi-webgpu-headers for WASI build")
       onnxruntime_fetchcontent_declare(
         wasi_webgpu_headers
-        GIT_REPOSITORY https://github.com/MendyBerger/wasi-webgpu-headers.git
-        GIT_TAG 18d84ac00c832b35669c1c96b6e3dee0718c6c1d
+        GIT_REPOSITORY https://github.com/wasi-gfx/wasi-webgpu-headers.git
+        GIT_TAG 28c37d96c90dc4a20cdee11ff70ff64e9368d2e6
       )
       onnxruntime_fetchcontent_makeavailable(wasi_webgpu_headers)
 

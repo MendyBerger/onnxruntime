@@ -72,11 +72,12 @@ bool exports_cosmonic_onnx_runtime_types_create_session(onnx_runtime_impl_list_u
 
 
 
-    exports_cosmonic_onnx_runtime_types_session_t session = {
+    // exports_cosmonic_onnx_runtime_types_session_t session = {
+    exports_cosmonic_onnx_runtime_types_session_t *session = new exports_cosmonic_onnx_runtime_types_session_t{
         .session = ort_session,
         .env = env
     };
-    *ret = exports_cosmonic_onnx_runtime_types_session_new(&session);
+    *ret = exports_cosmonic_onnx_runtime_types_session_new(session);
     return true;
 }
 
@@ -242,6 +243,32 @@ bool exports_cosmonic_onnx_runtime_types_method_session_run(exports_cosmonic_onn
     return true;
 }
 
+void exports_cosmonic_onnx_runtime_types_method_session_get_inputs(exports_cosmonic_onnx_runtime_types_borrow_session_t self, exports_cosmonic_onnx_runtime_types_list_tuple2_string_tensor_type_t *ret)
+{
+    if (self == NULL || ret == NULL) {
+        abort();
+    }
+
+    std::vector<std::string> input_names = self->session->GetInputNames();
+    std::cout << "C++ side input_names count: " << input_names.size() << std::endl;
+    for (const auto& name : input_names) {
+        std::cout << "  C++ input: " << name << std::endl;
+    }
+    // std::cout << "input_names: " << input_names << std::endl;
+    if (input_names.empty()) {
+        abort();  // No inputs in the model
+    }
+
+    ret->len = input_names.size();
+    ret->ptr = new exports_cosmonic_onnx_runtime_types_tuple2_string_tensor_type_t[ret->len];
+
+    for (size_t i = 0; i < input_names.size(); i++) {
+        ret->ptr[i].f0 = string_cpp_to_wasi(input_names[i].c_str());
+        ret->ptr[i].f1 = EXPORTS_COSMONIC_ONNX_RUNTIME_TYPES_TENSOR_TYPE_FLOAT32;
+    }
+}
+
+
 
 bool exports_cosmonic_onnx_runtime_types_create_tensor(exports_cosmonic_onnx_runtime_types_tensor_type_t type, onnx_runtime_impl_list_u8_t *data, onnx_runtime_impl_list_u64_t *dims, exports_cosmonic_onnx_runtime_types_own_tensor_t *ret, exports_cosmonic_onnx_runtime_types_error_t *err) {
     if (data == NULL || dims == NULL) {
@@ -327,14 +354,52 @@ void exports_cosmonic_onnx_runtime_types_method_tensor_get_dims(exports_cosmonic
     }
 }
 
+// void exports_cosmonic_onnx_runtime_types_method_tensor_get_data(exports_cosmonic_onnx_runtime_types_borrow_tensor_t self, bool *maybe_release_data, onnx_runtime_impl_list_u8_t *ret) {
+//     if (self == NULL || ret == NULL) {
+//         abort();
+//     }
+
+//     ret->len = self->tensor->GetTensorTypeAndShapeInfo().GetElementCount();
+//     ret->ptr = new uint8_t[ret->len];
+//     memcpy(ret->ptr, self->tensor->GetTensorData<uint8_t>(), ret->len);
+// }
+
 void exports_cosmonic_onnx_runtime_types_method_tensor_get_data(exports_cosmonic_onnx_runtime_types_borrow_tensor_t self, bool *maybe_release_data, onnx_runtime_impl_list_u8_t *ret) {
     if (self == NULL || ret == NULL) {
         abort();
     }
 
-    ret->len = self->tensor->GetTensorTypeAndShapeInfo().GetElementCount();
-    ret->ptr = new uint8_t[ret->len];
-    memcpy(ret->ptr, self->tensor->GetTensorData<uint8_t>(), ret->len);
+    auto type_info = self->tensor->GetTensorTypeAndShapeInfo();
+    size_t element_count = type_info.GetElementCount();
+    size_t element_size = 0;
+
+    // Determine element size based on data type
+    auto element_type = type_info.GetElementType();
+    switch (element_type) {
+        case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
+            element_size = sizeof(float);  // 4 bytes
+            break;
+        case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16:
+            element_size = 2;  // 2 bytes
+            break;
+        case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:
+            element_size = sizeof(int32_t);
+            break;
+        case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64:
+            element_size = sizeof(int64_t);
+            break;
+        case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8:
+            element_size = 1;
+            break;
+        default:
+            element_size = sizeof(float);  // Default to float
+            break;
+    }
+
+    size_t byte_count = element_count * element_size;
+    ret->len = byte_count;
+    ret->ptr = new uint8_t[byte_count];
+    memcpy(ret->ptr, self->tensor->GetTensorData<uint8_t>(), byte_count);
 }
 
 // void exports_cosmonic_onnx_runtime_types_error_free(exports_cosmonic_onnx_runtime_types_error_t *ptr);

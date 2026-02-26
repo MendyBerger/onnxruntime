@@ -47,6 +47,22 @@ void __wasm_export_exports_cosmonic_onnx_runtime_types_method_session_run_post_r
   }
 }
 
+__attribute__((__weak__, __export_name__("cabi_post_cosmonic:onnx-runtime/types#[method]session.get-inputs")))
+void __wasm_export_exports_cosmonic_onnx_runtime_types_method_session_get_inputs_post_return(uint8_t * arg0) {
+  size_t len = *((size_t*) (arg0 + sizeof(void*)));
+  if (len > 0) {
+    uint8_t *ptr = *((uint8_t **) (arg0 + 0));
+    for (size_t i = 0; i < len; i++) {
+      uint8_t *base = ptr + i * (3*sizeof(void*));
+      (void) base;
+      if ((*((size_t*) (base + sizeof(void*)))) > 0) {
+        free(*((uint8_t **) (base + 0)));
+      }
+    }
+    free(ptr);
+  }
+}
+
 __attribute__((__weak__, __export_name__("cabi_post_cosmonic:onnx-runtime/types#create-tensor")))
 void __wasm_export_exports_cosmonic_onnx_runtime_types_create_tensor_post_return(uint8_t * arg0) {
   switch ((int32_t) (int32_t) *((uint8_t*) (arg0 + 0))) {
@@ -266,6 +282,21 @@ void exports_cosmonic_onnx_runtime_types_result_list_tuple2_string_own_tensor_er
   }
 }
 
+void exports_cosmonic_onnx_runtime_types_tuple2_string_tensor_type_free(exports_cosmonic_onnx_runtime_types_tuple2_string_tensor_type_t *ptr) {
+  onnx_runtime_impl_string_free(&ptr->f0);
+}
+
+void exports_cosmonic_onnx_runtime_types_list_tuple2_string_tensor_type_free(exports_cosmonic_onnx_runtime_types_list_tuple2_string_tensor_type_t *ptr) {
+  size_t list_len = ptr->len;
+  if (list_len > 0) {
+    exports_cosmonic_onnx_runtime_types_tuple2_string_tensor_type_t *list_ptr = ptr->ptr;
+    for (size_t i = 0; i < list_len; i++) {
+      exports_cosmonic_onnx_runtime_types_tuple2_string_tensor_type_free(&list_ptr[i]);
+    }
+    free(list_ptr);
+  }
+}
+
 void onnx_runtime_impl_list_u64_free(onnx_runtime_impl_list_u64_t *ptr) {
   size_t list_len = ptr->len;
   if (list_len > 0) {
@@ -446,6 +477,16 @@ uint8_t * __wasm_export_exports_cosmonic_onnx_runtime_types_method_session_run(u
     *((size_t*)(ptr + (2*sizeof(void*)))) = (*payload).len;
     *((uint8_t **)(ptr + sizeof(void*))) = (uint8_t *) (*payload).ptr;
   }
+  return ptr;
+}
+
+__attribute__((__export_name__("cosmonic:onnx-runtime/types#[method]session.get-inputs")))
+uint8_t * __wasm_export_exports_cosmonic_onnx_runtime_types_method_session_get_inputs(uint8_t * arg) {
+  exports_cosmonic_onnx_runtime_types_list_tuple2_string_tensor_type_t ret;
+  exports_cosmonic_onnx_runtime_types_method_session_get_inputs(((exports_cosmonic_onnx_runtime_types_session_t*) arg), &ret);
+  uint8_t *ptr = (uint8_t *) &RET_AREA;
+  *((size_t*)(ptr + sizeof(void*))) = (ret).len;
+  *((uint8_t **)(ptr + 0)) = (uint8_t *) (ret).ptr;
   return ptr;
 }
 
