@@ -243,6 +243,8 @@ unsigned int GetThreadId() {
 unsigned int GetProcessId() {
 #ifdef _WIN32
   return static_cast<unsigned int>(GetCurrentProcessId());
+#elif defined(__wasi__)
+  return 1;  // WASI has no process IDs
 #elif defined(__MACH__) || defined(__wasm__) || defined(_AIX)
   return static_cast<unsigned int>(getpid());
   // return 42;

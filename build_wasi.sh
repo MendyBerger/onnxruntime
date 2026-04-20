@@ -47,6 +47,9 @@ cmake "$SCRIPT_DIR/cmake" \
     -DCMAKE_RANLIB="$WASI_SDK_PATH/bin/llvm-ranlib" \
     -DCMAKE_C_COMPILER_TARGET=wasm32-wasi \
     -DCMAKE_CXX_COMPILER_TARGET=wasm32-wasi \
+    -DCMAKE_C_FLAGS="-Wno-deprecated -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN" \
+    -DCMAKE_CXX_FLAGS="-Wno-deprecated -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN" \
+    -DCMAKE_EXE_LINKER_FLAGS="-lwasi-emulated-signal -lwasi-emulated-mman" \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
     -DCMAKE_SYSROOT="$WASI_SDK_PATH/share/wasi-sysroot" \
     -DCMAKE_FIND_ROOT_PATH="$WASI_SDK_PATH/share/wasi-sysroot" \
@@ -81,6 +84,36 @@ echo "Starting build..."
 echo "=========================================="
 cmake --build . --target onnxruntime_webassembly -j$(nproc)
 
+# Convert WASM module to WASI Preview 2 component
+# The linker produces a plain WASM module; wasm-tools wraps it into a component
+# with the WASI P1 adapter so graphtime/wasmtime can run it.
+WASM_OUTPUT="$(find . -name 'ort-wasi*.wasm' -type f | head -1)"
+if [ -n "$WASM_OUTPUT" ] && command -v wasm-tools >/dev/null 2>&1; then
+    echo ""
+    echo "=========================================="
+    echo "Converting to WASI Preview 2 component..."
+    echo "=========================================="
+    ADAPTER=$(find ~/.cargo/registry -name "wasi_snapshot_preview1.command.wasm" \
+        -path "*/wasi-preview1-component-adapter-provider*" 2>/dev/null | sort -rV | head -1)
+    if [ -z "$ADAPTER" ]; then
+        echo "Warning: wasi_snapshot_preview1.command.wasm adapter not found in ~/.cargo/registry"
+        echo "Install it with: cargo add wasi-preview1-component-adapter-provider"
+        echo "Skipping component conversion — binary will not run with graphtime"
+    else
+        wasm-tools component new "$WASM_OUTPUT" \
+            --adapt "wasi_snapshot_preview1=$ADAPTER" \
+            -o "$WASM_OUTPUT"
+        echo "Component created: $WASM_OUTPUT"
+        # Verify component magic
+        MAGIC=$(xxd "$WASM_OUTPUT" | head -1 | awk '{print $3}')
+        if [ "$MAGIC" = "0d00" ]; then
+            echo "✓ Verified: WASI Preview 2 component (magic bytes ok)"
+        else
+            echo "Warning: unexpected magic bytes — may not be a valid component"
+        fi
+    fi
+fi
+
 # Show output
 echo ""
 echo "=========================================="
@@ -90,8 +123,8 @@ echo "Output files:"
 find . -name "*.wasm" -type f
 
 echo ""
-echo "To run with wasmtime:"
-echo "  wasmtime run --dir=. $(find . -name 'ort-wasi*.wasm' -type f | head -1)"
+echo "To run with graphtime (WebGPU):"
+echo "  USE_WEBGPU=1 graphtime --dir=. $(find . -name 'ort-wasi*.wasm' -type f | head -1)"
 echo ""
-echo "To run with wasmer:"
-echo "  wasmer run $(find . -name 'ort-wasi*.wasm' -type f | head -1)"
+echo "To run with wasmtime (CPU only):"
+echo "  wasmtime --dir=. $(find . -name 'ort-wasi*.wasm' -type f | head -1)"

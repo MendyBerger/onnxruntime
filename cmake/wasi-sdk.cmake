@@ -75,7 +75,7 @@ set(CMAKE_CXX_FLAGS "${WASI_FLAGS}" CACHE STRING "CXX flags" FORCE)
 # Link with wasi-emulated-signal for signal support
 # Link with wasi-emulated-mman for mmap support
 # Link with wasi-emulated-getpid for process ID support
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,--allow-undefined -Wl,--export-all -mthread-model single -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,--allow-undefined -mthread-model single -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid")
 
 # Cache the compiler checks
 set(CMAKE_C_COMPILER_WORKS 1 CACHE INTERNAL "")

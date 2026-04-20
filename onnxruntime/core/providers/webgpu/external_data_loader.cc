@@ -3,11 +3,17 @@
 
 #if defined(__wasm__)
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#else
 #include <memory>
+#endif
 
 #include "core/framework/tensor.h"
 #include "core/providers/webgpu/external_data_loader.h"
+#if !defined(__EMSCRIPTEN__)
 #include "core/providers/webgpu/webgpu_context.h"
+#endif
 
 namespace onnxruntime {
 namespace webgpu {
@@ -22,6 +28,21 @@ common::Status ExternalDataLoader::LoadTensor(const Env& env,
                                               FileOffsetType data_offset,
                                               SafeInt<size_t> data_length,
                                               Tensor& tensor) const {
+#if defined(__EMSCRIPTEN__)
+  // Emscripten: use JS interop to load from Module.MountedFiles
+  ExternalDataLoadType load_type;
+  if (tensor.Location().device.Type() == OrtDevice::CPU) {
+    load_type = ExternalDataLoadType::CPU;
+  } else if (tensor.Location().device.Type() == OrtDevice::GPU &&
+             tensor.Location().name == WEBGPU_BUFFER) {
+    load_type = ExternalDataLoadType::WEBGPU_BUFFER;
+  } else {
+    return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "Unsupported tensor location: ", tensor.Location().ToString());
+  }
+
+  return LoadWebAssemblyExternalData(env, data_file_path, data_offset, data_length, load_type, tensor.MutableDataRaw());
+#else
+  // WASI: use file I/O
   if (tensor.Location().device.Type() == OrtDevice::CPU) {
     gsl::span<char> buffer(static_cast<char*>(tensor.MutableDataRaw()), data_length);
     ORT_RETURN_IF_ERROR(env.ReadFileIntoBuffer(data_file_path.native().c_str(), data_offset, data_length, buffer));
@@ -39,6 +60,7 @@ common::Status ExternalDataLoader::LoadTensor(const Env& env,
   }
 
   return Status::OK();
+#endif
 }
 
 }  // namespace webgpu
