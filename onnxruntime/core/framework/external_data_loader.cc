@@ -19,7 +19,7 @@ common::Status IExternalDataLoader::LoadTensor([[maybe_unused]] const Env& env,
   ORT_NOT_IMPLEMENTED(__FUNCTION__, " is not implemented");
 }
 
-#if defined(__wasm__)
+#if defined(__EMSCRIPTEN__)
 
 // common::Status LoadWebAssemblyExternalData(const Env& env,
 //                                            const std::filesystem::path& data_file_path,

@@ -1095,7 +1095,7 @@ ORT_API(void, OrtUninitializeBuffer, _In_opt_ void* input, size_t input_len, enu
 #pragma warning(disable : 26409)
 #endif
 
-#if !defined(__wasm__)
+#if !defined(__EMSCRIPTEN__)
 static Status GetFileContent(const Env& env, const std::filesystem::path& file_path, FileOffsetType offset,
                              size_t length, IAllocatorUniquePtr<void>& external_data) {
   // query length if it is 0
@@ -1153,7 +1153,7 @@ Status GetExtDataFromTensorProto(const Env& env,
 
   TensorShape tensor_shape = utils::GetTensorShapeFromTensorProto(tensor_proto);
   const DataTypeImpl* const type = DataTypeImpl::TensorTypeFromONNXEnum(tensor_proto.data_type())->GetElementType();
-  // MLDataType ml_tensor_type = DataTypeImpl::GetType<Tensor>();
+  MLDataType ml_tensor_type = DataTypeImpl::GetType<Tensor>();
   const auto& name = tensor_proto.name();
 
   if (external_data_file_path == onnxruntime::utils::kTensorProtoMemoryAddressTag) {
@@ -1165,7 +1165,7 @@ Status GetExtDataFromTensorProto(const Env& env,
                   " while shape has bytes size: ", tensor.SizeInBytes());
     Tensor::InitOrtValue(std::move(tensor), ort_value);
   } else {
-#if defined(__wasm__)
+#if defined(__EMSCRIPTEN__)
     // ORT_RETURN_IF(file_offset < 0 || file_offset + raw_data_safe_len >= 4294967296,
     //               "External initializer: ", tensor_proto.name(), " offset: ", file_offset,
     //               " size to read: ", static_cast<size_t>(raw_data_safe_len),

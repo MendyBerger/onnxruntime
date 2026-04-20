@@ -13,8 +13,7 @@ set(ABSL_USE_EXTERNAL_GOOGLETEST ON)
 # WASI-specific configuration: disable synchronization primitives
 if(CMAKE_SYSTEM_NAME STREQUAL "WASI")
   message(STATUS "Configuring Abseil for WASI: disabling synchronization libraries")
-  # Note: ABSL_HAVE_THREAD_LOCAL cannot be directly set - it's auto-detected
-  # The -mthread-model single flag will cause Abseil to detect no thread-local support
+  # Threads::Threads is provided by cmake/wasi_patches/FindThreads.cmake (no-op stub).
   # Use STDCPP waiter mode (4) since WASI doesn't have futex or real pthread support
   add_compile_definitions(ABSL_FORCE_WAITER_MODE=4)
 

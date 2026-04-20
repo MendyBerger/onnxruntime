@@ -440,7 +440,7 @@ if(onnxruntime_USE_VCPKG)
   find_package(flatbuffers REQUIRED)
 else()
 # We do not need to build flatc for iOS or Android Cross Compile
-if (CMAKE_SYSTEM_NAME STREQUAL "iOS" OR CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+if (CMAKE_SYSTEM_NAME STREQUAL "iOS" OR CMAKE_SYSTEM_NAME STREQUAL "Android" OR CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR CMAKE_SYSTEM_NAME STREQUAL "WASI")
   set(FLATBUFFERS_BUILD_FLATC OFF CACHE BOOL "FLATBUFFERS_BUILD_FLATC" FORCE)
 endif()
 set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "FLATBUFFERS_BUILD_TESTS" FORCE)
@@ -786,8 +786,8 @@ if (onnxruntime_USE_WEBGPU)
       message(STATUS "Using wasi-webgpu-headers for WASI build")
       onnxruntime_fetchcontent_declare(
         wasi_webgpu_headers
-        GIT_REPOSITORY https://github.com/MendyBerger/wasi-webgpu-headers.git
-        GIT_TAG b1584349095e1a378c60bad99cac23749bb34fe2
+        GIT_REPOSITORY https://github.com/cdmurph32/wasi-webgpu-headers.git
+        GIT_TAG 742f67596095ca33498a0d346961755f654eb22c
       )
       onnxruntime_fetchcontent_makeavailable(wasi_webgpu_headers)
 
@@ -798,7 +798,7 @@ if (onnxruntime_USE_WEBGPU)
       onnxruntime_fetchcontent_declare(
         dawn_wasi_webgpu_cpp
         GIT_REPOSITORY https://github.com/MendyBerger/dawn_wasi_webgpu_cpp.git
-        GIT_TAG 65c07fb29d2d536d7c99972ade6a25b42e6907db
+        GIT_TAG 7f7cab7f7302ba6729a5724ed3ad68714958660c
       )
       onnxruntime_fetchcontent_makeavailable(dawn_wasi_webgpu_cpp)
     endif()

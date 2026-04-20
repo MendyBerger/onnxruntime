@@ -88,8 +88,8 @@ void WebGpuContext::Initialize(const WebGpuBufferCacheConfig& buffer_cache_confi
         device_desc.requiredFeatures = required_features.data();
         device_desc.requiredFeatureCount = required_features.size();
       }
-      // wgpu::Limits required_limits = GetRequiredLimits(adapter);
-      // device_desc.requiredLimits = &required_limits;
+      wgpu::Limits required_limits = GetRequiredLimits(adapter);
+      device_desc.requiredLimits = &required_limits;
 
       // TODO: revise temporary error handling
       device_desc.SetUncapturedErrorCallback([](const wgpu::Device& /*device*/, wgpu::ErrorType type, wgpu::StringView message) {
@@ -117,20 +117,20 @@ void WebGpuContext::Initialize(const WebGpuBufferCacheConfig& buffer_cache_confi
     // cache device queue
     device_queue_ = device_.GetQueue();
     // cache device limits
-    // ORT_ENFORCE(Device().GetLimits(&device_limits_));
+    ORT_ENFORCE(Device().GetLimits(&device_limits_));
     // cache device features
-    // wgpu::SupportedFeatures supported_features;
-    // Device().GetFeatures(&supported_features);
-    // for (size_t i = 0; i < supported_features.featureCount; i++) {
-    //   device_features_.insert(supported_features.features[i]);
-    // }
+    wgpu::SupportedFeatures supported_features;
+    Device().GetFeatures(&supported_features);
+    for (size_t i = 0; i < supported_features.featureCount; i++) {
+      device_features_.insert(supported_features.features[i]);
+    }
     // cache adapter info
-// #if !defined(__wasm__)
-//     if (DeviceHasFeature(wgpu::FeatureName::ChromiumExperimentalSubgroupMatrix)) {
-//       adapter_info_.nextInChain = &subgroup_matrix_configs_;
-//     }
-// #endif
-    // ORT_ENFORCE(Device().GetAdapterInfo(&adapter_info_));
+#if !defined(__wasm__)
+    if (DeviceHasFeature(wgpu::FeatureName::ChromiumExperimentalSubgroupMatrix)) {
+      adapter_info_.nextInChain = &subgroup_matrix_configs_;
+    }
+#endif
+    ORT_ENFORCE(Device().GetAdapterInfo(&adapter_info_));
 
     // create buffer manager
     buffer_mgr_ = BufferManagerFactory::Create(*this,
@@ -148,16 +148,16 @@ void WebGpuContext::Initialize(const WebGpuBufferCacheConfig& buffer_cache_confi
     program_mgr_ = std::make_unique<ProgramManager>(Device(), DeviceLimits());
 
     // set query type
-// #if !defined(__wasm__)
-//     if (device_.HasFeature(wgpu::FeatureName::ChromiumExperimentalTimestampQueryInsidePasses)) {
-//       query_type_ = TimestampQueryType::InsidePasses;
-//     } else
-// #endif
-//         if (device_.HasFeature(wgpu::FeatureName::TimestampQuery)) {
-//       query_type_ = TimestampQueryType::AtPasses;
-//     } else {
-//       query_type_ = TimestampQueryType::None;
-//     }
+#if !defined(__wasm__)
+    if (DeviceHasFeature(wgpu::FeatureName::ChromiumExperimentalTimestampQueryInsidePasses)) {
+      query_type_ = TimestampQueryType::InsidePasses;
+    } else
+#endif
+        if (DeviceHasFeature(wgpu::FeatureName::TimestampQuery)) {
+      query_type_ = TimestampQueryType::AtPasses;
+    } else {
+      query_type_ = TimestampQueryType::None;
+    }
     if (enable_pix_capture) {
 #if defined(ENABLE_PIX_FOR_WEBGPU_EP)
       // set pix frame generator
@@ -520,51 +520,51 @@ std::vector<const char*> WebGpuContext::GetDisabledDeviceToggles() const {
 
 std::vector<wgpu::FeatureName> WebGpuContext::GetAvailableRequiredFeatures(const wgpu::Adapter& adapter) const {
   std::vector<wgpu::FeatureName> required_features;
-//   constexpr wgpu::FeatureName features[]{
-// #if !defined(__wasm__)
-//       wgpu::FeatureName::ChromiumExperimentalTimestampQueryInsidePasses,
-//       wgpu::FeatureName::ChromiumExperimentalSubgroupMatrix,
-// #endif
-//       wgpu::FeatureName::TimestampQuery,
-//       wgpu::FeatureName::ShaderF16,
-//       wgpu::FeatureName::Subgroups,
-// #if !defined(__wasm__)
-//       wgpu::FeatureName::BufferMapExtendedUsages,
-// #endif
-//   };
-  // for (auto feature : features) {
-  //   if (adapter.HasFeature(feature)) {
-  //     required_features.push_back(feature);
-  //   }
-  // }
+  constexpr wgpu::FeatureName features[]{
+#if !defined(__wasm__)
+      wgpu::FeatureName::ChromiumExperimentalTimestampQueryInsidePasses,
+      wgpu::FeatureName::ChromiumExperimentalSubgroupMatrix,
+#endif
+      wgpu::FeatureName::TimestampQuery,
+      wgpu::FeatureName::ShaderF16,
+      wgpu::FeatureName::Subgroups,
+#if !defined(__wasm__)
+      wgpu::FeatureName::BufferMapExtendedUsages,
+#endif
+  };
+  for (auto feature : features) {
+    if (adapter.HasFeature(feature)) {
+      required_features.push_back(feature);
+    }
+  }
   return required_features;
 }
 
-// wgpu::Limits WebGpuContext::GetRequiredLimits(const wgpu::Adapter& adapter) const {
-//   wgpu::Limits required_limits{};
-//   wgpu::Limits adapter_limits;
-//   ORT_ENFORCE(adapter.GetLimits(&adapter_limits));
+wgpu::Limits WebGpuContext::GetRequiredLimits(const wgpu::Adapter& adapter) const {
+  wgpu::Limits required_limits{};
+  wgpu::Limits adapter_limits;
+  ORT_ENFORCE(adapter.GetLimits(&adapter_limits));
 
-//   required_limits.maxBindGroups = adapter_limits.maxBindGroups;
-//   required_limits.maxComputeWorkgroupStorageSize = adapter_limits.maxComputeWorkgroupStorageSize;
-//   required_limits.maxComputeWorkgroupsPerDimension = adapter_limits.maxComputeWorkgroupsPerDimension;
-//   required_limits.maxStorageBuffersPerShaderStage = adapter_limits.maxStorageBuffersPerShaderStage;
+  required_limits.maxBindGroups = adapter_limits.maxBindGroups;
+  required_limits.maxComputeWorkgroupStorageSize = adapter_limits.maxComputeWorkgroupStorageSize;
+  required_limits.maxComputeWorkgroupsPerDimension = adapter_limits.maxComputeWorkgroupsPerDimension;
+  required_limits.maxStorageBuffersPerShaderStage = adapter_limits.maxStorageBuffersPerShaderStage;
 
-//   if (small_storage_buffer_binding_size_for_testing_) {
-//     // No matter how small it is set, the minimum storage buffer binding size in WebGPU is 128 MB.
-//     required_limits.maxStorageBufferBindingSize = 134217728;
-//   } else {
-//     required_limits.maxStorageBufferBindingSize = adapter_limits.maxStorageBufferBindingSize;
-//   }
+  if (small_storage_buffer_binding_size_for_testing_) {
+    // No matter how small it is set, the minimum storage buffer binding size in WebGPU is 128 MB.
+    required_limits.maxStorageBufferBindingSize = 134217728;
+  } else {
+    required_limits.maxStorageBufferBindingSize = adapter_limits.maxStorageBufferBindingSize;
+  }
 
-//   required_limits.maxBufferSize = adapter_limits.maxBufferSize;
-//   required_limits.maxComputeInvocationsPerWorkgroup = adapter_limits.maxComputeInvocationsPerWorkgroup;
-//   required_limits.maxComputeWorkgroupSizeX = adapter_limits.maxComputeWorkgroupSizeX;
-//   required_limits.maxComputeWorkgroupSizeY = adapter_limits.maxComputeWorkgroupSizeY;
-//   required_limits.maxComputeWorkgroupSizeZ = adapter_limits.maxComputeWorkgroupSizeZ;
+  required_limits.maxBufferSize = adapter_limits.maxBufferSize;
+  required_limits.maxComputeInvocationsPerWorkgroup = adapter_limits.maxComputeInvocationsPerWorkgroup;
+  required_limits.maxComputeWorkgroupSizeX = adapter_limits.maxComputeWorkgroupSizeX;
+  required_limits.maxComputeWorkgroupSizeY = adapter_limits.maxComputeWorkgroupSizeY;
+  required_limits.maxComputeWorkgroupSizeZ = adapter_limits.maxComputeWorkgroupSizeZ;
 
-//   return required_limits;
-// }
+  return required_limits;
+}
 
 void WebGpuContext::WriteTimestamp(uint32_t query_index) {
   if (!is_profiling_ || query_type_ != TimestampQueryType::InsidePasses) {

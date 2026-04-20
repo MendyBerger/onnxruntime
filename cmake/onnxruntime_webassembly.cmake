@@ -243,14 +243,13 @@ else()
     target_link_libraries(onnxruntime_webassembly PRIVATE tensorboard)
   endif()
 
-  # WASI-SDK linker options
+  # WASI command model: main() is the entry point; crt1-command.o provides _start.
+  # Do NOT use -Wl,--no-entry — that suppresses _start and breaks wasmtime run.
+  # Do NOT use -mexec-model=reactor unless simple.cpp is replaced with exported functions.
   target_link_options(onnxruntime_webassembly PRIVATE
     -Wl,--allow-undefined
-    -Wl,--export-all
-    -Wl,--no-entry
     -Wl,--stack-first
     -Wl,-z,stack-size=1048576  # 1MB stack
-    # -mexec-model=reactor  # Use reactor model for better compatibility with host imports
   )
 
   # Memory configuration for WASI

@@ -38,7 +38,7 @@ class IExternalDataLoader {
                                     Tensor& tensor) const;
 };
 
-#if defined(__wasm__)
+#if defined(__EMSCRIPTEN__)
 
 enum class ExternalDataLoadType {
   CPU = 0,
