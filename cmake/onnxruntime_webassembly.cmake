@@ -93,11 +93,6 @@ if (onnxruntime_USE_JSEP)
   set(onnxruntime_USE_JSEP OFF)
 endif()
 
-# if (onnxruntime_USE_WEBGPU)
-#   message(WARNING "WebGPU is not supported with WASI-SDK, disabling.")
-#   set(onnxruntime_USE_WEBGPU OFF)
-# endif()
-
 # WASI doesn't support threads in the traditional sense
 if (onnxruntime_ENABLE_WEBASSEMBLY_THREADS)
   message(WARNING "Traditional threading is not supported with WASI-SDK, disabling.")
@@ -172,9 +167,7 @@ if (onnxruntime_BUILD_WEBASSEMBLY_STATIC_LIB)
     endif()
 else()
   file(GLOB_RECURSE onnxruntime_webassembly_src CONFIGURE_DEPENDS
-    # "${ONNXRUNTIME_ROOT}/wasm/api.cc" TODO:
     "${ONNXRUNTIME_ROOT}/wasm/simple.cpp"
-    "${ONNXRUNTIME_ROOT}/wasm/image_utils.cpp"
   )
 
   source_group(TREE ${REPO_ROOT} FILES ${onnxruntime_webassembly_src})
@@ -223,17 +216,13 @@ else()
       "${WASI_WEBGPU_HEADERS_PATH}/imports_component_type.o"
     )
 
-    # # Add include directory for imports.h
-    # target_include_directories(onnxruntime_webassembly PRIVATE
-    #   "${WASI_WEBGPU_HEADERS_PATH}"
-    # )
-
     # Link the WebGPU adapter object files
     target_sources(onnxruntime_webassembly PRIVATE
       "${WASI_WEBGPU_HEADERS_PATH}/webgpu.c"
       "${WASI_WEBGPU_HEADERS_PATH}/imports.c"
     )
   endif()
+
   # WASI-specific link options
   if (onnxruntime_USE_XNNPACK)
     target_link_libraries(onnxruntime_webassembly PRIVATE XNNPACK)
@@ -245,7 +234,7 @@ else()
 
   # WASI command model: main() is the entry point; crt1-command.o provides _start.
   # Do NOT use -Wl,--no-entry — that suppresses _start and breaks wasmtime run.
-  # Do NOT use -mexec-model=reactor unless simple.cpp is replaced with exported functions.
+  # Use -mexec-model=reactor only for library/HTTP handler builds (no main).
   target_link_options(onnxruntime_webassembly PRIVATE
     -Wl,--allow-undefined
     -Wl,--stack-first

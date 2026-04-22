@@ -786,8 +786,8 @@ if (onnxruntime_USE_WEBGPU)
       message(STATUS "Using wasi-webgpu-headers for WASI build")
       onnxruntime_fetchcontent_declare(
         wasi_webgpu_headers
-        GIT_REPOSITORY https://github.com/cdmurph32/wasi-webgpu-headers.git
-        GIT_TAG 742f67596095ca33498a0d346961755f654eb22c
+        GIT_REPOSITORY https://github.com/wasi-gfx/wasi-webgpu-headers.git
+        GIT_TAG 67d10e592a05f409498cc07875a1cd7bbc3784e5
       )
       onnxruntime_fetchcontent_makeavailable(wasi_webgpu_headers)
 
@@ -797,8 +797,8 @@ if (onnxruntime_USE_WEBGPU)
       message(STATUS "Using dawn_wasi_webgpu_cpp for WASI build")
       onnxruntime_fetchcontent_declare(
         dawn_wasi_webgpu_cpp
-        GIT_REPOSITORY https://github.com/MendyBerger/dawn_wasi_webgpu_cpp.git
-        GIT_TAG 7f7cab7f7302ba6729a5724ed3ad68714958660c
+        GIT_REPOSITORY https://github.com/cdmurph32/dawn_wasi_webgpu_cpp.git
+        GIT_TAG efb8177120fb1b1105b7ca3566cbc64c51cfe31e
       )
       onnxruntime_fetchcontent_makeavailable(dawn_wasi_webgpu_cpp)
     endif()
