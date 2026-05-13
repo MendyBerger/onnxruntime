@@ -787,7 +787,7 @@ if (onnxruntime_USE_WEBGPU)
       onnxruntime_fetchcontent_declare(
         wasi_webgpu_headers
         GIT_REPOSITORY https://github.com/wasi-gfx/wasi-webgpu-headers.git
-        GIT_TAG 67d10e592a05f409498cc07875a1cd7bbc3784e5
+        GIT_TAG 1bb90921f82d49afacf3e564b2280356ef720cf6
       )
       onnxruntime_fetchcontent_makeavailable(wasi_webgpu_headers)
 
