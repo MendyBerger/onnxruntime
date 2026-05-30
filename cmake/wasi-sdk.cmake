@@ -1,6 +1,10 @@
 # CMake toolchain file for WASI-SDK
 # Usage: cmake -DCMAKE_TOOLCHAIN_FILE=cmake/wasi-sdk.cmake ...
 
+# Prepend our WASI stub finders so dependencies that call find_package(Threads REQUIRED)
+# (e.g. Abseil) get a no-op target instead of a fatal error.
+list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_LIST_DIR}/wasi_patches")
+
 # Check if WASI_SDK_PATH is set
 if(NOT DEFINED ENV{WASI_SDK_PATH})
     message(FATAL_ERROR "WASI_SDK_PATH environment variable is not set. "
@@ -71,7 +75,7 @@ set(CMAKE_CXX_FLAGS "${WASI_FLAGS}" CACHE STRING "CXX flags" FORCE)
 # Link with wasi-emulated-signal for signal support
 # Link with wasi-emulated-mman for mmap support
 # Link with wasi-emulated-getpid for process ID support
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,--allow-undefined -Wl,--export-all -mthread-model single -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,--allow-undefined -mthread-model single -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid")
 
 # Cache the compiler checks
 set(CMAKE_C_COMPILER_WORKS 1 CACHE INTERNAL "")

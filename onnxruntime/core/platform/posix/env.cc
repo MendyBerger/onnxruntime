@@ -337,7 +337,11 @@ class PosixEnv : public Env {
   }
 
   PIDType GetSelfPid() const override {
+#ifdef __wasi__
+    return 1;  // WASI has no process IDs
+#else
     return getpid();
+#endif
   }
 
   Status GetFileLength(const PathChar* file_path, size_t& length) const override {
