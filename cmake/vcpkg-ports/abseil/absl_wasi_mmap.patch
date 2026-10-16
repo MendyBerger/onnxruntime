@@ -1,0 +1,25 @@
+Backport of upstream Abseil commit bd701e6f28 (PR #1922): enable mmap on WASI when
+_WASI_EMULATED_MMAN is defined. Included in Abseil 20260107.0 and later; remove on upgrade.
+
+diff --git a/absl/base/config.h b/absl/base/config.h
+index a31b9a5..b2ad7ce 100644
+--- a/absl/base/config.h
++++ b/absl/base/config.h
+@@ -364,6 +364,7 @@ static_assert(ABSL_INTERNAL_INLINE_NAMESPACE_STR[0] != 'h' ||
+ //   AsmJS                             __asmjs__
+ //   WebAssembly (Emscripten)          __EMSCRIPTEN__
+ //   Fuchsia                           __Fuchsia__
++//   WebAssembly (WASI)                _WASI_EMULATED_MMAN (implies __wasi__)
+ //
+ // Note that since Android defines both __ANDROID__ and __linux__, one
+ // may probe for either Linux or Android by simply testing for __linux__.
+@@ -379,7 +380,8 @@ static_assert(ABSL_INTERNAL_INLINE_NAMESPACE_STR[0] != 'h' ||
+     defined(__asmjs__) || defined(__EMSCRIPTEN__) || defined(__Fuchsia__) || \
+     defined(__sun) || defined(__myriad2__) || defined(__HAIKU__) ||          \
+     defined(__OpenBSD__) || defined(__NetBSD__) || defined(__QNX__) ||       \
+-    defined(__VXWORKS__) || defined(__hexagon__) || defined(__XTENSA__)
++    defined(__VXWORKS__) || defined(__hexagon__) || defined(__XTENSA__) ||   \
++    defined(_WASI_EMULATED_MMAN)
+ #define ABSL_HAVE_MMAP 1
+ #endif
+ 

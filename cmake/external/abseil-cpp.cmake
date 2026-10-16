@@ -24,7 +24,8 @@ if(Patch_FOUND)
                            ${Patch_EXECUTABLE} --binary --ignore-whitespace -p1 < ${PROJECT_SOURCE_DIR}/vcpkg-ports/abseil/absl_msvc_unreachable_code.patch)
   else()
     set(ABSL_PATCH_COMMAND ${Patch_EXECUTABLE} --binary --ignore-whitespace -p1 < ${PROJECT_SOURCE_DIR}/vcpkg-ports/abseil/absl_cuda_warnings.patch &&
-                           ${Patch_EXECUTABLE} --binary --ignore-whitespace -p1 < ${PROJECT_SOURCE_DIR}/vcpkg-ports/abseil/absl_cuda13_member_template.patch)
+                           ${Patch_EXECUTABLE} --binary --ignore-whitespace -p1 < ${PROJECT_SOURCE_DIR}/vcpkg-ports/abseil/absl_cuda13_member_template.patch &&
+                           ${Patch_EXECUTABLE} --binary --ignore-whitespace -p1 < ${PROJECT_SOURCE_DIR}/vcpkg-ports/abseil/absl_wasi_mmap.patch)
   endif()
 else()
   set(ABSL_PATCH_COMMAND "")
