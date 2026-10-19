@@ -26,7 +26,7 @@
     "${ONNXRUNTIME_ROOT}/core/providers/webgpu/*.h"
     "${ONNXRUNTIME_ROOT}/core/providers/webgpu/*.cc"
   )
-  if(onnxruntime_USE_EXTERNAL_DAWN OR CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  if(onnxruntime_USE_EXTERNAL_DAWN OR CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR CMAKE_SYSTEM_NAME STREQUAL "WASI")
     list(REMOVE_ITEM onnxruntime_providers_webgpu_cc_srcs
       "${ONNXRUNTIME_ROOT}/core/providers/webgpu/webgpu_context_dawn_platform.cc")
   endif()
@@ -241,6 +241,10 @@
         "SHELL:-s ASYNCIFY_STACK_SIZE=65536"
       )
     endif()
+  elseif (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+    # webgpu.h implementation on top of wasi:webgpu, plus Dawn's upstream-flavored C++ headers.
+    # See onnxruntime_external_deps.cmake.
+    target_link_libraries(onnxruntime_providers_webgpu PUBLIC onnxruntime_wasi_webgpu)
   else()
     onnxruntime_add_include_to_target(onnxruntime_providers_webgpu dawn::dawncpp_headers dawn::dawn_headers)
 

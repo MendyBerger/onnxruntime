@@ -695,7 +695,45 @@ if(onnxruntime_ENABLE_TRAINING OR (onnxruntime_ENABLE_TRAINING_APIS AND onnxrunt
 endif()
 
 
-if (onnxruntime_USE_WEBGPU)
+if (onnxruntime_USE_WEBGPU AND CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  # WASI has no native GPU access, so Dawn is not built. Instead, use Dawn's "webgpu_upstream" C++ headers, which wrap
+  # the standard webgpu.h, together with wasi-webgpu-headers, a webgpu.h implementation on top of the wasi:webgpu
+  # interface that the host provides.
+  onnxruntime_fetchcontent_declare(
+    dawn_headers
+    URL ${DEP_URL_dawn_headers}
+    URL_HASH SHA1=${DEP_SHA1_dawn_headers}
+    EXCLUDE_FROM_ALL
+  )
+  onnxruntime_fetchcontent_declare(
+    wasi_webgpu_headers
+    URL ${DEP_URL_wasi_webgpu_headers}
+    URL_HASH SHA1=${DEP_SHA1_wasi_webgpu_headers}
+    EXCLUDE_FROM_ALL
+  )
+  # wasi-webgpu-headers includes "webgpu/webgpu.h" from its webgpu submodule, so place webgpu-headers there.
+  FetchContent_GetProperties(wasi_webgpu_headers)
+  onnxruntime_fetchcontent_makeavailable(wasi_webgpu_headers)
+  onnxruntime_fetchcontent_declare(
+    webgpu_headers
+    URL ${DEP_URL_webgpu_headers}
+    URL_HASH SHA1=${DEP_SHA1_webgpu_headers}
+    SOURCE_DIR "${wasi_webgpu_headers_SOURCE_DIR}/webgpu"
+    EXCLUDE_FROM_ALL
+  )
+  onnxruntime_fetchcontent_makeavailable(dawn_headers webgpu_headers)
+
+  add_library(onnxruntime_wasi_webgpu STATIC
+    "${wasi_webgpu_headers_SOURCE_DIR}/webgpu.c"
+    "${wasi_webgpu_headers_SOURCE_DIR}/async_futures.c"
+    "${wasi_webgpu_headers_SOURCE_DIR}/imports.c"
+    # Describes the wasi:webgpu imports to the component linker. imports.c references it so that it is always linked.
+    "${wasi_webgpu_headers_SOURCE_DIR}/imports_component_type.o")
+  # BEFORE so that Dawn's upstream-flavored webgpu_cpp.h is used.
+  target_include_directories(onnxruntime_wasi_webgpu BEFORE PUBLIC
+    "${dawn_headers_SOURCE_DIR}/include/webgpu_upstream"
+    "${wasi_webgpu_headers_SOURCE_DIR}")
+elseif (onnxruntime_USE_WEBGPU)
   if (onnxruntime_DAWN_PREBUILT_DIR)
     if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR
         onnxruntime_BUILD_DAWN_SHARED_LIBRARY OR
