@@ -138,22 +138,19 @@ ConfigOptions EnvironmentAllocatorWeightLoadAccelerationOptions(const char* valu
   return options;
 }
 
-bool DeviceToggleIsEnabled(const webgpu::WebGpuContext& context, std::string_view toggle_name) {
+// Dawn native toggle inspection; the tests that use these are skipped otherwise.
 #if !defined(__wasm__) && !defined(USE_EXTERNAL_DAWN)
+bool DeviceToggleIsEnabled(const webgpu::WebGpuContext& context, std::string_view toggle_name) {
   const auto toggles = dawn::native::GetTogglesUsed(context.Device().Get());
   return std::any_of(toggles.begin(), toggles.end(), [toggle_name](const char* toggle) {
     return std::string_view{toggle} == toggle_name;
   });
-#else
-  ORT_UNUSED_PARAMETER(context);
-  ORT_UNUSED_PARAMETER(toggle_name);
-  return false;
-#endif
 }
 
 bool DisableRobustnessToggleIsEnabled(const webgpu::WebGpuContext& context) {
   return DeviceToggleIsEnabled(context, "disable_robustness");
 }
+#endif
 
 template <size_t ElementCount = 16>
 std::array<uint32_t, ElementCount> ReadBufferWithExternalCommandEncoder(

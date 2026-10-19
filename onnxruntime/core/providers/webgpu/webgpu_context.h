@@ -286,7 +286,9 @@ class WebGpuContext final {
   const wgpu::AdapterInfo& AdapterInfo() const { return adapter_info_; }
   const wgpu::Limits& DeviceLimits() const { return device_limits_; }
   bool DeviceHasFeature(wgpu::FeatureName feature) const { return device_features_.contains(feature); }
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
   const wgpu::AdapterPropertiesSubgroupMatrixConfigs& SubgroupMatrixConfigs() const { return subgroup_matrix_configs_; }
+#endif
 
   const wgpu::CommandEncoder& GetCommandEncoder(CommandRecordingState& recording) {
     if (!recording.command_encoder) {
@@ -503,7 +505,9 @@ class WebGpuContext final {
   wgpu::AdapterInfo adapter_info_;
   wgpu::Limits device_limits_;
   std::unordered_set<wgpu::FeatureName> device_features_;
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
   wgpu::AdapterPropertiesSubgroupMatrixConfigs subgroup_matrix_configs_;
+#endif
 
   std::unique_ptr<webgpu::BufferManager> buffer_mgr_;
   std::unique_ptr<webgpu::BufferManager> initializer_buffer_mgr_;

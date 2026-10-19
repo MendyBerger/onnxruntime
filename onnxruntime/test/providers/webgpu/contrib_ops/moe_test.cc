@@ -34,7 +34,9 @@
 
 #if defined(USE_WEBGPU)
 #include "contrib_ops/webgpu/moe/block_fp8_expert_matmul.h"
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
 #include "core/providers/webgpu/math/subgroup_matrix_config.h"
+#endif
 #include "core/providers/webgpu/webgpu_context.h"
 #endif
 
@@ -1224,6 +1226,9 @@ TEST(MoETest, QMoETest_WebGPU_BlockFp8_TiledPrefill) {
 
 TEST(MoETest, QMoETest_WebGPU_BlockFp8_MixedRoutingSeparateFc3) {
   GET_WEBGPU_EP_OR_SKIP(webgpu_ep);
+#if defined(ORT_WEBGPU_STANDARD_HEADERS)
+  constexpr bool matrix_supported = false;
+#else
   const auto& gpu_context = webgpu::WebGpuContextFactory::GetContext(0);
   const auto& adapter = gpu_context.AdapterInfo();
   const auto& configs = gpu_context.SubgroupMatrixConfigs();
@@ -1235,6 +1240,7 @@ TEST(MoETest, QMoETest_WebGPU_BlockFp8_MixedRoutingSeparateFc3) {
           {{wgpu::SubgroupMatrixComponentType::F16, wgpu::SubgroupMatrixComponentType::F32,
             16, 16, 16, 32, false}})
           .has_value();
+#endif
   const auto dispatches_before = contrib::webgpu::BlockFp8MatrixDispatchCount();
 
   constexpr int rows = 132;

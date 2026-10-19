@@ -733,6 +733,8 @@ if (onnxruntime_USE_WEBGPU AND CMAKE_SYSTEM_NAME STREQUAL "WASI")
   target_include_directories(onnxruntime_wasi_webgpu BEFORE PUBLIC
     "${dawn_headers_SOURCE_DIR}/include/webgpu_upstream"
     "${wasi_webgpu_headers_SOURCE_DIR}")
+  # Code compiled against these headers must not use Dawn or Chromium extensions to webgpu.h.
+  target_compile_definitions(onnxruntime_wasi_webgpu PUBLIC ORT_WEBGPU_STANDARD_HEADERS)
 elseif (onnxruntime_USE_WEBGPU)
   if (onnxruntime_DAWN_PREBUILT_DIR)
     if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR

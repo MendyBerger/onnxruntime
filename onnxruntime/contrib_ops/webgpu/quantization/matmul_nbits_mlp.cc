@@ -7,7 +7,9 @@
 
 #include "contrib_ops/webgpu/quantization/matmul_nbits.h"
 #include "contrib_ops/webgpu/quantization/matmul_nbits_common.h"
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
 #include "contrib_ops/webgpu/quantization/subgroup_matrix_matmul_nbits.h"
+#endif
 #include "contrib_ops/webgpu/quantization/dp4a_matmul_nbits.h"
 #include "contrib_ops/webgpu/bert/skip_layer_norm.h"
 #include "contrib_ops/webgpu/webgpu_contrib_kernels.h"
@@ -299,6 +301,9 @@ Status MatMulNBitsMlp::ComputeInternal(onnxruntime::webgpu::ComputeContext& cont
       block_size == kFusedDecodeFastPathBlockSize;
   const bool has_norm_input = norm_scale != nullptr;
 
+#if defined(ORT_WEBGPU_STANDARD_HEADERS)
+  const bool would_use_subgroup_unfused = false;
+#else
   std::optional<SubgroupMatrixConfig> subgroup_matrix_config;
   const bool would_use_subgroup_unfused =
       CanApplySubgroupMatrixMatMulNBits(context,
@@ -311,6 +316,7 @@ Status MatMulNBitsMlp::ComputeInternal(onnxruntime::webgpu::ComputeContext& cont
                                         y->DataType() == DataTypeImpl::GetType<MLFloat16>(),
                                         subgroup_matrix_config,
                                         M);
+#endif
   const bool would_use_dp4a_unfused =
       CanApplyDP4AMatrixMatMulNBits(context, accuracy_level_, block_size, N, K, components_a,
                                     M, /*has_weight_idx_indirect=*/false, y);

@@ -6,7 +6,9 @@
 
 #include "contrib_ops/webgpu/quantization/matmul_nbits.h"
 #include "contrib_ops/webgpu/quantization/matmul_nbits_common.h"
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
 #include "contrib_ops/webgpu/quantization/subgroup_matrix_matmul_nbits.h"
+#endif
 #include "contrib_ops/webgpu/quantization/dp4a_matmul_nbits.h"
 #include "contrib_ops/webgpu/webgpu_contrib_kernels.h"
 #include "core/providers/cpu/math/matmul_helper.h"
@@ -224,6 +226,7 @@ Status ApplyMatMulNBits(const Tensor* a, const Tensor* b, const Tensor* scales, 
   const uint32_t zp_elements_per_byte = 8 / static_cast<uint32_t>(nbits);
   uint32_t zero_blocks_per_col = (n_blocks_per_col + zp_elements_per_byte - 1) / zp_elements_per_byte * zp_elements_per_byte;
 
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
   // apple|intel - Experimental dawn support for subgroup matrix matmul.
   std::optional<SubgroupMatrixConfig> subgroup_matrix_config;
   if (CanApplySubgroupMatrixMatMulNBits(context,
@@ -242,6 +245,7 @@ Status ApplyMatMulNBits(const Tensor* a, const Tensor* b, const Tensor* scales, 
                                           *subgroup_matrix_config, context, y, weight_index,
                                           weight_index_indirect);
   }
+#endif
 
   // On FP32 only GPUs and Qualcomm GPUs, integer math is faster than FP32 therefore always use DP4A independent of length of M.
   // DP4A Q2 path now supports custom zero points via a 1024-entry LUT (4 zero-point sections × 256 byte values).

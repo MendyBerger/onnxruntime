@@ -18,7 +18,9 @@
 #include "core/providers/webgpu/math/matmul_algorithm.h"
 #include "core/providers/webgpu/webgpu_provider_options.h"
 #if !defined(ORT_USE_EP_API_ADAPTERS)
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
 #include "core/providers/webgpu/math/subgroup_matrix_config.h"
+#endif
 #include "core/providers/webgpu/vendor/intel/math/gemm_subgroup_utils.h"
 #include "core/providers/webgpu/webgpu_context.h"
 #endif
@@ -133,6 +135,9 @@ static std::optional<std::string> GetForcedAlgorithmUnsupportedReason(
       }
       break;
     case webgpu::MatMulAlgorithm::SubgroupMatrix: {
+#if defined(ORT_WEBGPU_STANDARD_HEADERS)
+      return "subgroup_matrix requires the WebGPU subgroup-matrix feature.";
+#else
       if (!context.DeviceHasFeature(wgpu::FeatureName::ChromiumExperimentalSubgroupMatrix)) {
         return "subgroup_matrix requires the WebGPU subgroup-matrix feature.";
       }
@@ -149,6 +154,7 @@ static std::optional<std::string> GetForcedAlgorithmUnsupportedReason(
         return "subgroup_matrix requires an 8x16x16 or 16x16x16 F16 configuration with subgroup size 32.";
       }
       break;
+#endif
     }
     case webgpu::MatMulAlgorithm::Gemv:
     case webgpu::MatMulAlgorithm::Naive:

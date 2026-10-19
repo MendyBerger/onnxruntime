@@ -11,7 +11,9 @@
 #include "contrib_ops/cpu/moe/moe_helper.h"
 #include "contrib_ops/webgpu/quantization/matmul_nbits.h"
 #include "core/providers/webgpu/math/gemm_packed.h"
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
 #include "core/providers/webgpu/math/subgroup_matrix_config.h"
+#endif
 #if !defined(DISABLE_FLOAT8_TYPES)
 #include "core/common/float8.h"
 #endif
@@ -139,10 +141,14 @@ Status ApplyBlockFp8ExpertMatMul(ComputeContext& context,
                           BlockFp8MatrixDispatchFits(rows, cols,
                                                      context.DeviceLimits().maxComputeWorkgroupsPerDimension) &&
                           input->DataType() == DataTypeImpl::GetType<MLFloat16>() &&
+#if defined(ORT_WEBGPU_STANDARD_HEADERS)
+                          false;
+#else
                           SelectSubgroupMatrixConfig(context, {{wgpu::SubgroupMatrixComponentType::F16,
                                                                 wgpu::SubgroupMatrixComponentType::F32,
                                                                 16, 16, 16, 32, false}})
                               .has_value();
+#endif
   BlockFp8ExpertMatMulProgram program{bias != nullptr, indirect_experts != nullptr, broadcast_input, use_matrix};
   program.AddInputs({{input, ProgramTensorMetadataDependency::Type}});
   if (indirect_experts) {

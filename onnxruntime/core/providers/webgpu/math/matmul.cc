@@ -19,11 +19,15 @@
 namespace onnxruntime {
 namespace webgpu {
 
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
 std::unique_ptr<SubgroupMatrixMatMulImpl> CreateSubgroupMatrixMatMulImpl(const ComputeContextBase& context);
+#endif
 
 void MatMulComputeDispatcher::Initialize(const ComputeContextBase& context) {
   std::call_once(init_flag_, [&]() {
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
     subgroup_matrix_impl_ = CreateSubgroupMatrixMatMulImpl(context);
+#endif
     if (context.AdapterInfo().vendor == std::string_view{"intel"}) {
       planner_ = std::make_unique<intel::IntelMatMulExecutionPlanner>(
           context.GetSplitKConfig());

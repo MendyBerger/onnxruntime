@@ -1094,7 +1094,9 @@ std::vector<wgpu::FeatureName> WebGpuContext::GetAvailableRequiredFeatures(const
       wgpu::FeatureName::ChromiumExperimentalTimestampQueryInsidePasses,
       wgpu::FeatureName::ImplicitDeviceSynchronization,
 #endif
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
       wgpu::FeatureName::ChromiumExperimentalSubgroupMatrix,
+#endif
       wgpu::FeatureName::TimestampQuery,
       wgpu::FeatureName::ShaderF16,
       wgpu::FeatureName::Subgroups,
@@ -1169,8 +1171,10 @@ void WebGpuContext::WriteTimestamp(CommandRecordingState& recording, uint32_t qu
     return;
   }
 
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
   const auto& compute_pass_encoder = GetComputePassEncoder(recording);
   compute_pass_encoder.WriteTimestamp(query_set_, query_index);
+#endif
 }
 
 void WebGpuContext::StartProfiling() {

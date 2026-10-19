@@ -819,6 +819,11 @@ if(onnxruntime_USE_WEBGPU AND NOT onnxruntime_USE_EP_API_ADAPTERS)
   file(GLOB_RECURSE onnxruntime_test_providers_webgpu_src CONFIGURE_DEPENDS
     "${TEST_SRC_DIR}/providers/webgpu/*.cc"
     "${TEST_SRC_DIR}/providers/webgpu/*.h")
+  if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+    # Tests the subgroup matrix kernel helpers, which WASI builds leave out (see onnxruntime_providers_webgpu.cmake).
+    list(REMOVE_ITEM onnxruntime_test_providers_webgpu_src
+      "${TEST_SRC_DIR}/providers/webgpu/math/subgroup_matrix_config_test.cc")
+  endif()
 
   list(APPEND onnxruntime_test_providers_src ${onnxruntime_test_providers_webgpu_src})
   list(APPEND onnxruntime_test_providers_dependencies onnxruntime_providers_webgpu)

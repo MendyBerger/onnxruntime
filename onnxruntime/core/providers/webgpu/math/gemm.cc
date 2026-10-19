@@ -9,7 +9,9 @@
 
 #include "core/providers/webgpu/shader_helper.h"
 #include "core/providers/webgpu/webgpu_supported_types.h"
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
 #include "core/providers/webgpu/math/subgroup_matrix_gemm.h"
+#endif
 
 namespace onnxruntime {
 namespace webgpu {
@@ -124,9 +126,11 @@ Status Gemm::ComputeInternal(ComputeContext& context) const {
   // on the first Compute call, once the device capabilities can be queried from the
   // compute context. std::call_once makes the one-time init safe against concurrent
   // Compute calls on this shared kernel; a null impl_ means no vendor path exists.
+#if !defined(ORT_WEBGPU_STANDARD_HEADERS)
   std::call_once(impl_init_flag_, [&]() {
     impl_ = CreateSubgroupMatrixGemmImpl(*this, context);
   });
+#endif
   const bool requires_fp32_accumulation = context.EnableMatmulFp32Accumulation() && A->IsDataType<MLFloat16>();
   if (impl_ && !requires_fp32_accumulation) {
     bool handled = false;

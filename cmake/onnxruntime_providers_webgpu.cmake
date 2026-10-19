@@ -33,6 +33,11 @@
   if(NOT onnxruntime_DISABLE_CONTRIB_OPS)
     list(APPEND onnxruntime_providers_webgpu_cc_srcs ${onnxruntime_webgpu_contrib_ops_cc_srcs})
   endif()
+  if(CMAKE_SYSTEM_NAME STREQUAL "WASI")
+    # WASI builds use the standard webgpu.h (ORT_WEBGPU_STANDARD_HEADERS), which lacks Chromium's experimental
+    # subgroup matrix extension, so leave out the kernels that require it.
+    list(FILTER onnxruntime_providers_webgpu_cc_srcs EXCLUDE REGEX "/subgroup_matrix_[^/]*$")
+  endif()
 
   if(NOT onnxruntime_USE_EP_API_ADAPTERS)
     #
