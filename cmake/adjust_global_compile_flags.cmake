@@ -62,6 +62,29 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   endif()
 endif()
 
+if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  # wasi-libc only exposes <signal.h>, <sys/mman.h>, getpid() and process clocks (getrusage(), times()) behind
+  # these opt-in emulation macros. Abseil also needs _WASI_EMULATED_MMAN to provide the allocator its
+  # synchronization primitives use.
+  add_compile_definitions(_WASI_EMULATED_SIGNAL _WASI_EMULATED_MMAN _WASI_EMULATED_GETPID
+                          _WASI_EMULATED_PROCESS_CLOCKS)
+  foreach(lang C CXX)
+    string(APPEND CMAKE_${lang}_STANDARD_LIBRARIES " -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid"
+                                                   " -lwasi-emulated-process-clocks")
+  endforeach()
+  # wasm-ld defaults to a 64KB stack, which MLAS kernels overflow (e.g. the scalar SGEMM packing buffers).
+  # Match the stack size used for the Emscripten test binaries. Applications linking ORT need the same.
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-z,stack-size=5242880")
+
+  if (NOT onnxruntime_DISABLE_EXCEPTIONS)
+    # Use the standardized (exnref) encoding of Wasm exception handling; runtimes such as Wasmtime do not support the
+    # legacy encoding that LLVM emits by default.
+    string(APPEND CMAKE_C_FLAGS " -fwasm-exceptions -mllvm -wasm-use-legacy-eh=false")
+    string(APPEND CMAKE_CXX_FLAGS " -fwasm-exceptions -mllvm -wasm-use-legacy-eh=false")
+    string(APPEND CMAKE_CXX_STANDARD_LIBRARIES " -lunwind")
+  endif()
+endif()
+
 if (onnxruntime_EXTERNAL_TRANSFORMER_SRC_PATH)
   add_definitions(-DORT_TRAINING_EXTERNAL_GRAPH_TRANSFORMERS=1)
 endif()

@@ -176,6 +176,25 @@ class PosixRandomAccessFile final : public RandomAccessFile {
     }
     path.assign(file_info.kf_path);
     return Status::OK();
+#elif defined(__wasi__)
+    // WASI cannot map a descriptor back to a path. Resolve the path the file was opened with and only accept the
+    // result if it still refers to the opened file, so a path swapped after opening cannot pass validation.
+    std::unique_ptr<char, decltype(&free)> resolved{realpath(path_.c_str(), nullptr), &free};
+    if (!resolved) {
+      return ReportSystemError("realpath", path_);
+    }
+    struct stat opened_stat{};
+    struct stat resolved_stat{};
+    if (TempFailureRetry(fstat, descriptor_.Get(), &opened_stat) < 0) {
+      return ReportSystemError("fstat", path_);
+    }
+    if (stat(resolved.get(), &resolved_stat) != 0) {
+      return ReportSystemError("stat", resolved.get());
+    }
+    ORT_RETURN_IF(opened_stat.st_dev != resolved_stat.st_dev || opened_stat.st_ino != resolved_stat.st_ino,
+                  "Opened file no longer matches its path: ", path_);
+    path.assign(resolved.get());
+    return Status::OK();
 #else
     return ORT_MAKE_STATUS(
         ONNXRUNTIME, NOT_IMPLEMENTED,
@@ -744,8 +763,8 @@ class PosixEnv : public Env {
   }
 
   PathString GetRuntimePath() const override {
-// In AIX, dladdr is not supported.
-#if !defined(_AIX)
+// In AIX and WASI, dladdr is not supported.
+#if !defined(_AIX) && !defined(__wasi__)
     // Use dladdr() to look up the file that contains an address from this binary.
     const void* const address_from_this_binary = reinterpret_cast<const void*>(Env::Default);
 

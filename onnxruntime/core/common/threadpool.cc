@@ -34,7 +34,7 @@ limitations under the License.
 #endif
 #elif defined(__EMSCRIPTEN__)
 #include <emscripten/threading.h>
-#else
+#elif !defined(__wasi__)
 #include <sched.h>
 #endif
 #endif
@@ -137,6 +137,8 @@ void ThreadPoolProfiler::MainThreadStat::LogCore() {
 #endif
 #elif defined(__EMSCRIPTEN__)
   core_ = emscripten_num_logical_cores();
+#elif defined(__wasi__)
+  // WASI has no API to query the current processor, so core_ stays unset.
 #elif defined(_AIX)
   core_ = mycpu();
 #else
@@ -221,6 +223,7 @@ void ThreadPoolProfiler::LogRun(int thread_idx) {
 #endif
 #elif defined(__EMSCRIPTEN__)
       child_thread_stats_[thread_idx].core_ = emscripten_num_logical_cores();
+#elif defined(__wasi__)
 #elif defined(_AIX)
       child_thread_stats_[thread_idx].core_ = mycpu();
 #else

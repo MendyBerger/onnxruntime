@@ -15,6 +15,10 @@ namespace perftest {
 namespace utils {
 
 std::size_t GetPeakWorkingSetSize() {
+#if defined(__wasi__)
+  // wasi-libc's getrusage() emulation only reports CPU time.
+  return 0;
+#else
   struct rusage rusage;
   getrusage(RUSAGE_SELF, &rusage);
 
@@ -25,6 +29,7 @@ std::size_t GetPeakWorkingSetSize() {
 #endif
 
   return static_cast<size_t>(rusage.ru_maxrss) * kBytesPerMaxRssUnit;
+#endif
 }
 
 class CPUUsage : public ICPUUsage {

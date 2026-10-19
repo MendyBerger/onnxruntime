@@ -94,6 +94,13 @@ static std::vector<LogicalProcessors> ReadThreadAffinityConfig(const std::string
 
 static std::unique_ptr<ThreadPool>
 CreateThreadPoolHelper(Env* env, OrtThreadPoolParams options) {
+#if defined(__wasi__)
+  // wasi-libc's single-threaded targets cannot create threads, so run everything on the calling thread unless the
+  // application provides its own thread creation function.
+  if (!options.custom_create_thread_fn) {
+    return nullptr;
+  }
+#endif
   ThreadOptions to;
   if (options.thread_pool_size <= 0) {  // default
     if (options.auto_set_affinity) {

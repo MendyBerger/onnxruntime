@@ -413,6 +413,19 @@ def add_webassembly_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_wasi_args(parser: argparse.ArgumentParser) -> None:
+    """Adds arguments for WebAssembly System Interface (WASI) builds."""
+    parser.add_argument("--build_wasi", action="store_true", help="Build for WASI (wasm32-wasip3) using wasi-sdk.")
+    parser.add_argument(
+        "--wasi_sdk_path",
+        default=os.environ.get("WASI_SDK_PATH", ""),
+        help="Path to the wasi-sdk installation. Defaults to the WASI_SDK_PATH environment variable.",
+    )
+    parser.add_argument(
+        "--wasmtime_path", default="wasmtime", help="Path to the Wasmtime executable used to run WASI tests."
+    )
+
+
 def add_gdk_args(parser: argparse.ArgumentParser) -> None:
     """Adds arguments for GDK (Xbox) platform builds."""
     parser.add_argument("--use_gdk", action="store_true", help="Build with the GDK toolchain.")
@@ -922,6 +935,7 @@ def is_cross_compiling(args: argparse.Namespace) -> bool:
             getattr(args, "visionos", False),
             getattr(args, "tvos", False),
             args.build_wasm,
+            args.build_wasi,
             getattr(args, "use_gdk", False),  # GDK args added conditionally
         ]
     )
@@ -931,6 +945,7 @@ def target_supports_telemetry(args: argparse.Namespace) -> bool:
     """Returns whether the selected build target has a telemetry provider."""
     if (
         args.build_wasm
+        or args.build_wasi
         or getattr(args, "disable_exceptions", False)
         or getattr(args, "rv64", False)
         or getattr(args, "visionos", False)
@@ -1003,6 +1018,7 @@ def parse_arguments() -> argparse.Namespace:
     add_cross_compile_args(parser)  # Non-Windows cross-compile args
     add_android_args(parser)
     add_webassembly_args(parser)
+    add_wasi_args(parser)
     add_dependency_args(parser)
     add_extension_args(parser)
     add_size_reduction_args(parser)
@@ -1044,6 +1060,15 @@ def parse_arguments() -> argparse.Namespace:
     # Treat --build_wasm_static_lib as implying --build_wasm
     if args.build_wasm_static_lib:
         args.build_wasm = True
+
+    if args.build_wasi:
+        if args.build_wasm:
+            parser.error("--build_wasi cannot be combined with --build_wasm.")
+        if not args.wasi_sdk_path:
+            parser.error("--build_wasi requires --wasi_sdk_path or the WASI_SDK_PATH environment variable.")
+        if args.build_shared_lib:
+            parser.error("--build_wasi does not support --build_shared_lib; WASI has no dynamic linking.")
+        args.wasi_sdk_path = os.path.normpath(args.wasi_sdk_path)
 
     if args.use_telemetry_legacy:
         warnings.warn(

@@ -53,8 +53,13 @@ onnxruntime_fetchcontent_makeavailable(re2)
 if (onnxruntime_BUILD_UNIT_TESTS)
   # WebAssembly threading support in Node.js is still an experimental feature and
   # not working properly with googletest suite.
-  if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  # WASI targets cannot create threads.
+  if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR CMAKE_SYSTEM_NAME STREQUAL "WASI")
     set(gtest_disable_pthreads ON)
+  endif()
+  if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+    # gtest captures output through temporary files, but WASI has no temporary directory or mkstemp().
+    add_compile_definitions(GTEST_HAS_STREAM_REDIRECTION=0)
   endif()
   set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
   if (IOS OR ANDROID)

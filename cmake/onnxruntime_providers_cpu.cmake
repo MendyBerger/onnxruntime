@@ -217,7 +217,8 @@ set_target_properties(${onnxruntime_providers_target} PROPERTIES FOLDER "ONNXRun
 if (NOT onnxruntime_MINIMAL_BUILD AND NOT onnxruntime_EXTENDED_MINIMAL_BUILD
                                   AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin|iOS|visionOS|tvOS"
                                   AND NOT CMAKE_SYSTEM_NAME STREQUAL "Android"
-                                  AND NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+                                  AND NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten"
+                                  AND NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
   file(GLOB onnxruntime_providers_shared_cc_srcs CONFIGURE_DEPENDS
   "${ONNXRUNTIME_ROOT}/core/providers/shared/*.h"
   "${ONNXRUNTIME_ROOT}/core/providers/shared/*.cc"

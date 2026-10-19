@@ -1228,9 +1228,21 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     "${TEST_SRC_DIR}/providers/cpu/tensor/grid_sample_test_custom.cc")
 endif()
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR IOS)
+if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  list(REMOVE_ITEM all_tests
+    # These tests only exercise GPU kernels and need gtest's stdout capture, which WASI builds disable.
+    "${TEST_SRC_DIR}/contrib_ops/packed_attention_op_test.cc"
+    "${TEST_SRC_DIR}/contrib_ops/packed_multihead_attention_op_test.cc"
+    "${TEST_SRC_DIR}/contrib_ops/paged_attention_op_test.cc"
+    # WASI targets are single-threaded.
+    "${TEST_SRC_DIR}/platform/barrier_test.cc"
+    "${TEST_SRC_DIR}/platform/threadpool_test.cc")
+endif()
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR CMAKE_SYSTEM_NAME STREQUAL "WASI" OR IOS)
    # Because we do not run these model tests in our web or iOS CI build pipelines, and some test code uses C++17
-   # filesystem functions that are not available in the iOS version we target.
+   # filesystem functions that are not available in the iOS version we target. On WASI, the model directories they
+   # search are outside the directory that is mapped into the sandbox.
    message("Disable model tests")
    list(REMOVE_ITEM all_tests
       "${TEST_SRC_DIR}/providers/cpu/model_tests.cc"
@@ -1247,6 +1259,20 @@ if (onnxruntime_USE_TENSORRT OR onnxruntime_USE_NV)
   # made test name contain the "ep" and "model path" information, so we can easily filter the tests using cuda ep or other ep with *cpu_* or *xxx_*.
   list(APPEND test_all_args "--gtest_filter=-*cpu_*:*cuda_*" )
 endif ()
+if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  string(JOIN ":" wasi_excluded_tests
+    # Expects ".." from the root directory to resolve to the root, but WASI rejects ".." at the sandbox root.
+    "PathValidationTest.ValidateExternalDataPath"
+    # These tests create threads or thread pools directly, which single-threaded WASI targets cannot do.
+    "ExecutionFrameTest.*"
+    "ExecutionProviderTest.ConcurrentRegistrationAndProviderOptionsSnapshotsAreConsistent"
+    "InferenceSession/GraphCaptureRunSerializationTest.RespectsConcurrentRunSupport/*"
+    "InferenceSessionTests.MultipleSessionsNoTimeout"
+    "KernelPilotMoeExpertStateTest.DistinctKernelsCanUpdateIndependently"
+    "KernelPilotMoeExpertStateTest.ParallelNodesShareLogBudget"
+    "SessionStateTestSharedInitalizersWithPrePacking.ParallelPrepack*")
+  list(APPEND test_all_args "--gtest_filter=-${wasi_excluded_tests}")
+endif()
 if(NOT onnxruntime_ENABLE_CUDA_EP_INTERNAL_TESTS)
   list(REMOVE_ITEM all_tests ${TEST_SRC_DIR}/providers/cuda/cuda_provider_test.cc)
 endif()
@@ -1570,6 +1596,13 @@ add_custom_command(
   ${TEST_DATA_SRC}
   ${TEST_DATA_DES})
 
+if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  # Temporary directory for tests run under Wasmtime (TMPDIR=/tmp), since WASI has no default one.
+  add_custom_command(
+    TARGET ${test_data_target} PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${test_data_target}>/tmp)
+endif()
+
 # Copy test samples from source to destination.
 add_custom_command(
   TARGET ${test_data_target} PRE_BUILD
@@ -1653,12 +1686,23 @@ block()
     list(APPEND onnxruntime_provider_test_deps ${onnxruntime_test_providers_runtime_dependencies})
   endif()
 
+  set(onnxruntime_provider_test_args)
+  if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+    # These tests create threads or thread pools directly, which single-threaded WASI targets cannot do.
+    string(JOIN ":" wasi_excluded_provider_tests
+      "GroupQueryAttentionTest.FlashDecoding_LocalWindow_Reference_CPU"
+      "Loop.InfiniteLoopTermination"
+      "MemcpyTest.copy1")
+    list(APPEND onnxruntime_provider_test_args "--gtest_filter=-${wasi_excluded_provider_tests}")
+  endif()
+
   AddTest(
     TARGET ${onnxruntime_provider_test_target}
     TEST_NAME onnxruntime_provider_test
     SOURCES ${onnxruntime_provider_test_srcs}
     LIBS ${onnxruntime_provider_test_libs}
     DEPENDS ${onnxruntime_provider_test_deps}
+    TEST_ARGS ${onnxruntime_provider_test_args}
   )
 
   # Match the non-plugin WebGPU test-source selection above.
@@ -2638,7 +2682,7 @@ endif()
   endif()
 endif()
 
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND NOT onnxruntime_CUDA_MINIMAL)
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND NOT CMAKE_SYSTEM_NAME STREQUAL "WASI" AND NOT onnxruntime_CUDA_MINIMAL)
 
   set(custom_op_src_patterns
     "${TEST_SRC_DIR}/testdata/custom_op_library/*.h"
@@ -2786,7 +2830,8 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND NOT onnxruntime_CUDA_MINIMAL
 endif()
 
 # Build custom op library that returns an error OrtStatus when the exported RegisterCustomOps function is called.
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND (NOT onnxruntime_MINIMAL_BUILD OR onnxruntime_MINIMAL_BUILD_CUSTOM_OPS))
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND NOT CMAKE_SYSTEM_NAME STREQUAL "WASI" AND
+    (NOT onnxruntime_MINIMAL_BUILD OR onnxruntime_MINIMAL_BUILD_CUSTOM_OPS))
   onnxruntime_add_shared_library_module(custom_op_invalid_library
                                         ${TEST_SRC_DIR}/testdata/custom_op_invalid_library/custom_op_library.h
                                         ${TEST_SRC_DIR}/testdata/custom_op_invalid_library/custom_op_library.cc)
@@ -2809,7 +2854,8 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND (NOT onnxruntime_MINIMAL_BUI
                ${ONNXRUNTIME_CUSTOM_OP_INVALID_LIB_LINK_FLAG})
 endif()
 
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND (NOT onnxruntime_MINIMAL_BUILD OR onnxruntime_MINIMAL_BUILD_CUSTOM_OPS))
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND NOT CMAKE_SYSTEM_NAME STREQUAL "WASI" AND
+    (NOT onnxruntime_MINIMAL_BUILD OR onnxruntime_MINIMAL_BUILD_CUSTOM_OPS))
 
   file(GLOB_RECURSE custom_op_get_const_input_test_library_src
         "${TEST_SRC_DIR}/testdata/custom_op_get_const_input_test_library/custom_op_lib.cc"
@@ -2840,7 +2886,8 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND (NOT onnxruntime_MINIMAL_BUI
                ${ONNXRUNTIME_CUSTOM_OP_GET_CONST_INPUT_TEST_LIB_LINK_FLAG})
 endif()
 
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND (NOT onnxruntime_MINIMAL_BUILD OR onnxruntime_MINIMAL_BUILD_CUSTOM_OPS))
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND NOT CMAKE_SYSTEM_NAME STREQUAL "WASI" AND
+    (NOT onnxruntime_MINIMAL_BUILD OR onnxruntime_MINIMAL_BUILD_CUSTOM_OPS))
 
   file(GLOB_RECURSE custom_op_local_function_test_library_src
         "${TEST_SRC_DIR}/testdata/custom_op_local_function/custom_op_local_function.cc"

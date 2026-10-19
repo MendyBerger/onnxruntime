@@ -432,7 +432,7 @@ function (setup_arm_neon_nchwc)
   mlas_add_private_compile_definitions(MLAS_USE_ARM_NEON_NCHWC)
 endfunction ()
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR CMAKE_SYSTEM_NAME STREQUAL "WASI")
   if (onnxruntime_ENABLE_WEBASSEMBLY_SIMD)
     file(GLOB_RECURSE mlas_platform_srcs
       "${MLAS_SRC_DIR}/wasm_simd/*.cpp"

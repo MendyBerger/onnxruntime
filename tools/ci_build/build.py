@@ -1124,6 +1124,32 @@ def generate_build_tree(
                 ),
             ]
 
+    if args.build_wasi:
+        wasi_toolchain_file = os.path.join(args.wasi_sdk_path, "share", "cmake", "wasi-sdk-p3.cmake")
+        if not os.path.exists(wasi_toolchain_file):
+            raise BuildError(f"wasi-sdk toolchain file not found: {wasi_toolchain_file}")
+        # CTest runs the test programs through Wasmtime, with the test working directory (and its testdata) mapped in as
+        # the guest root so that absolute paths resolve. WASI has no default temporary directory, so point TMPDIR at one
+        # inside the build directory. Without it, std::filesystem::temp_directory_path() returns an empty path, and
+        # wasi-libc resolves an empty path to the working directory, so test cleanup with remove_all() would delete
+        # the build directory.
+        wasmtime_command = [
+            args.wasmtime_path,
+            "run",
+            "-S",
+            "p3=y",
+            "-W",
+            "component-model-async=y,exceptions=y",
+            "--dir=.::/",
+            "--env",
+            "TMPDIR=/tmp",
+        ]
+        cmake_args += [
+            "-DCMAKE_TOOLCHAIN_FILE=" + wasi_toolchain_file,
+            "-DWASI_SDK_PREFIX=" + args.wasi_sdk_path,
+            "-DCMAKE_CROSSCOMPILING_EMULATOR=" + ";".join(wasmtime_command),
+        ]
+
     if args.build_wasm:
         if not args.use_vcpkg:
             cmake_args.append("-DCMAKE_TOOLCHAIN_FILE=" + emscripten_cmake_toolchain_file)
