@@ -176,9 +176,9 @@ class Profiler {
   // Mutex controlling access to profiler data
   std::mutex mutex_;
   bool enabled_{false};
-#if defined(__wasm__)
+#if defined(__EMSCRIPTEN__)
   /*
-   * The simplest way to emit profiling data in WebAssembly is to print out to console,
+   * The simplest way to emit profiling data in the browser is to print out to console,
    * since browsers can't access to a file system directly.
    * TODO: Consider MEMFS or IndexedDB instead of console.
    */
