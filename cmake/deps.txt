@@ -62,7 +62,7 @@ dawn;https://github.com/google/dawn/archive/refs/tags/v20260916.214021.zip;514e9
 dawn_agility_sdk;https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.721.3-preview;fa5f5fc8d0c8c209cfbb530be634960d20595841
 # Used by WASI builds of the WebGPU EP. dawn_headers must come from the same Dawn release as the dawn entry above.
 dawn_headers;https://github.com/google/dawn/releases/download/v20260916.214021/dawn-headers-202b044ac73a82216bf1e8e706138bb7aedd3a15.tar.gz;73d716bba6b4098b9a0183111e58f35af029e61d
-wasi_webgpu_headers;https://github.com/wasi-gfx/wasi-webgpu-headers/archive/917765edd7cb8f8cf95bda1217514c78f71b582b.zip;fb35409c7b5514687c2c3ee7bf2fd9a2d5bf4b93
+wasi_webgpu_headers;https://github.com/wasi-gfx/wasi-webgpu-headers/archive/5163b36ce9d679a33a331c5d82703c4a2db1a600.zip;13520d4f44a73d5035553fa96ebecfbd21d3ad1c
 # The webgpu submodule of wasi_webgpu_headers above.
 webgpu_headers;https://github.com/webgpu-native/webgpu-headers/archive/91beced212c8f9d3fa163b861851da5ebec741ad.zip;a9ec576f1ff49db29e8d2d2d7f197ede5c3be411
 kleidiai;https://github.com/ARM-software/kleidiai/archive/refs/tags/v1.30.0.tar.gz;36aebdd5bd28c40b1943eb93498ae42e703510e5
