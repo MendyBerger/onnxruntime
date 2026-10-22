@@ -1972,6 +1972,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   if (onnxruntime_ENABLE_WEBASSEMBLY_OUTPUT_OPTIMIZED_MODEL)
     add_compile_definitions(ORT_ENABLE_WEBASSEMBLY_OUTPUT_OPTIMIZED_MODEL)
   endif()
+elseif (CMAKE_SYSTEM_NAME STREQUAL "WASI" AND onnxruntime_BUILD_WEBASSEMBLY_STATIC_LIB)
+  list(APPEND ONNXRUNTIME_CMAKE_FILES onnxruntime_webassembly_static_lib)
 endif()
 
 # When GDK_PLATFORM is set then WINAPI_FAMILY is defined in gdk_toolchain.cmake (along with other relevant flags/definitions).

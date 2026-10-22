@@ -1057,8 +1057,8 @@ def parse_arguments() -> argparse.Namespace:
     if args.android_ndk_path:
         args.android_ndk_path = os.path.normpath(args.android_ndk_path)
 
-    # Treat --build_wasm_static_lib as implying --build_wasm
-    if args.build_wasm_static_lib:
+    # Treat --build_wasm_static_lib as implying --build_wasm, unless it's for WASI
+    if args.build_wasm_static_lib and not args.build_wasi:
         args.build_wasm = True
 
     if args.build_wasi:
